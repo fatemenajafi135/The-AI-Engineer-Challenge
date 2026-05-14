@@ -1,9 +1,39 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 type Message = { role: "user" | "assistant"; content: string };
 type Phase = "landing" | "chat";
+
+// Styled markdown components — theme colours hardcoded so this stays outside the component
+const md: React.ComponentProps<typeof ReactMarkdown>["components"] = {
+  p:          ({ children }) => <p style={{ margin: "0 0 6px 0", lineHeight: "1.6" }}>{children}</p>,
+  ul:         ({ children }) => <ul style={{ margin: "4px 0 6px 0", paddingLeft: "20px" }}>{children}</ul>,
+  ol:         ({ children }) => <ol style={{ margin: "4px 0 6px 0", paddingLeft: "20px" }}>{children}</ol>,
+  li:         ({ children }) => <li style={{ margin: "2px 0", lineHeight: "1.6" }}>{children}</li>,
+  strong:     ({ children }) => <strong style={{ color: "#FFFFFF", fontWeight: 700 }}>{children}</strong>,
+  em:         ({ children }) => <em style={{ fontStyle: "italic", color: "#D1C4E9" }}>{children}</em>,
+  a:          ({ href, children }) => <a href={href} target="_blank" rel="noreferrer" style={{ color: "#9472B6", textDecoration: "underline" }}>{children}</a>,
+  blockquote: ({ children }) => <blockquote style={{ borderLeft: "3px solid #9472B6", margin: "6px 0", paddingLeft: "12px", color: "#9B9B9B" }}>{children}</blockquote>,
+  code:       ({ className, children }) =>
+    className ? (
+      // fenced code block — className is "language-xxx"
+      <code style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "13px" }}>{children}</code>
+    ) : (
+      // inline code
+      <code style={{ background: "rgba(0,0,0,0.35)", padding: "1px 5px", borderRadius: "4px", fontFamily: "'JetBrains Mono', monospace", fontSize: "0.875em" }}>{children}</code>
+    ),
+  pre: ({ children }) => (
+    <pre style={{ background: "rgba(0,0,0,0.35)", padding: "10px 12px", borderRadius: "8px", overflowX: "auto", whiteSpace: "pre-wrap", margin: "4px 0 6px 0", fontFamily: "'JetBrains Mono', monospace", fontSize: "13px" }}>
+      {children}
+    </pre>
+  ),
+  h1: ({ children }) => <h1 style={{ fontSize: "18px", fontWeight: 700, margin: "6px 0 4px 0", color: "#FFFFFF" }}>{children}</h1>,
+  h2: ({ children }) => <h2 style={{ fontSize: "16px", fontWeight: 700, margin: "6px 0 4px 0", color: "#FFFFFF" }}>{children}</h2>,
+  h3: ({ children }) => <h3 style={{ fontSize: "15px", fontWeight: 600, margin: "6px 0 4px 0", color: "#FFFFFF" }}>{children}</h3>,
+};
 
 const COACH_OPTIONS = [
   { value: "fixer",       name: "The Fixer",       tagline: "Cuts through the noise, finds the block, hands you the next step." },
@@ -308,10 +338,9 @@ export default function Home() {
               {isStreamingBubble && msg.content === "" ? (
                 <span style={styles.typingDots}><span>●</span><span>●</span><span>●</span></span>
               ) : (
-                <>
-                  {msg.content}
-                  {isStreamingBubble && <span style={styles.cursor} aria-hidden="true">▍</span>}
-                </>
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={md}>
+                  {isStreamingBubble ? msg.content + " ▍" : msg.content}
+                </ReactMarkdown>
               )}
             </div>
           );
@@ -508,7 +537,6 @@ const styles: Record<string, React.CSSProperties> = {
     maxWidth: "75%",
     lineHeight: "1.6",
     fontSize: "15px",
-    whiteSpace: "pre-wrap",
     wordBreak: "break-word",
     transition: "all 200ms ease",
   },
