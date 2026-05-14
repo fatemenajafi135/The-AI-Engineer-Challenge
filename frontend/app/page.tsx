@@ -5,9 +5,20 @@ import { useState, useRef, useEffect } from "react";
 type Message = { role: "user" | "assistant"; content: string };
 type Phase = "landing" | "chat";
 
+const COACH_OPTIONS = [
+  { value: "fixer",       name: "The Fixer",       tagline: "Cuts through the noise, finds the block, hands you the next step." },
+  { value: "hype",        name: "The Hype Man",    tagline: "Your most embarrassingly loyal fan — makes progress feel electric." },
+  { value: "anchor",      name: "The Anchor",      tagline: "Calm when you're not, steady when everything feels like chaos." },
+  { value: "challenger",  name: "The Challenger",  tagline: "Won't let you off the hook — friendly but ruthless about excuses." },
+  { value: "wingman",     name: "The Wingman",     tagline: "Casual and warm, like a smart friend who actually listens." },
+  { value: "philosopher", name: "The Philosopher", tagline: "Zooms out when you're too deep in your own head." },
+];
+
+
 export default function Home() {
   const [phase, setPhase] = useState<Phase>("landing");
   const [userName, setUserName] = useState("");
+  const [coach, setCoach] = useState("challenger");
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -15,10 +26,12 @@ export default function Home() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  // Restore session from localStorage on mount (localStorage is client-only)
+  // Restore session from localStorage on mount
   useEffect(() => {
-    const savedName = localStorage.getItem("mc_userName");
+    const savedName     = localStorage.getItem("mc_userName");
+    const savedCoach    = localStorage.getItem("mc_coach");
     const savedMessages = localStorage.getItem("mc_messages");
+    if (savedCoach) setCoach(savedCoach);
     if (savedName) {
       setUserName(savedName);
       if (savedMessages) {
@@ -26,14 +39,14 @@ export default function Home() {
           setMessages(JSON.parse(savedMessages));
           setPhase("chat");
         } catch {
-          // corrupted data — start fresh
+          // corrupted — start fresh
         }
       }
     }
     setMounted(true);
   }, []);
 
-  // Persist messages whenever they change
+  // Persist messages on every change
   useEffect(() => {
     if (messages.length > 0) {
       localStorage.setItem("mc_messages", JSON.stringify(messages));
@@ -48,18 +61,22 @@ export default function Home() {
     const name = userName.trim();
     if (!name) return;
     localStorage.setItem("mc_userName", name);
-    const greeting: Message = {
-      role: "assistant",
-      content: `Hi ${name}! I'm your mental wellness coach — here to support you with stress, motivation, habits, and confidence. What's on your mind today?`,
-    };
-    setMessages([greeting]);
+    localStorage.setItem("mc_coach", coach);
+    setMessages([
+      {
+        role: "assistant",
+        content: `Hi ${name}! I'm your mental wellness coach — here to support you with stress, motivation, habits, and confidence. What's on your mind today?`,
+      },
+    ]);
     setPhase("chat");
   }
 
   function clearSession() {
-    localStorage.removeItem("mc_userName");
-    localStorage.removeItem("mc_messages");
+    ["mc_userName", "mc_coach", "mc_messages", "mc_tone", "mc_persona"].forEach((k) =>
+      localStorage.removeItem(k)
+    );
     setUserName("");
+    setCoach("challenger");
     setMessages([]);
     setPhase("landing");
   }
@@ -67,6 +84,8 @@ export default function Home() {
   async function sendMessage() {
     const text = input.trim();
     if (!text || streaming) return;
+
+    const history = messages.map((m) => ({ role: m.role, content: m.content }));
 
     setMessages((prev) => [...prev, { role: "user", content: text }]);
     setInput("");
@@ -80,7 +99,7 @@ export default function Home() {
       const res = await fetch("/api/chat/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify({ message: text, coach, history }),
         signal: controller.signal,
       });
 
@@ -142,15 +161,14 @@ export default function Home() {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   }
 
-  // Hold render until localStorage has been checked — avoids a landing flash on refresh
   if (!mounted) return null;
 
-  // ── Landing screen ──────────────────────────────────────────────────────────
+  // ── Landing ─────────────────────────────────────────────────────────────────
   if (phase === "landing") {
     return (
       <div style={styles.landingContainer}>
 
-        {/* Top 50% — hero */}
+        {/* Hero — top 50% */}
         <div style={styles.hero}>
           <span style={styles.heroEmoji}>🌿</span>
           <h1 style={styles.heroTitle}>Mental Coach</h1>
@@ -159,32 +177,52 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Bottom 50% — form */}
+        {/* Form — scrollable bottom half */}
         <div style={styles.formSection}>
           <div style={styles.formCard}>
-            <label style={styles.formLabel} htmlFor="name-input">
-              What&apos;s your name?
-            </label>
-            <input
-              id="name-input"
-              style={styles.formInput}
-              type="text"
-              value={userName}
-              onChange={(e) => setUserName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && startChat()}
-              placeholder="Enter your name…"
-              autoFocus
-            />
+
+            <div>
+              <label style={styles.formLabel} htmlFor="name-input">
+                What&apos;s your name?
+              </label>
+              <input
+                id="name-input"
+                style={styles.formInput}
+                type="text"
+                value={userName}
+                onChange={(e) => setUserName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && startChat()}
+                placeholder="Enter your name…"
+                autoFocus
+              />
+            </div>
+
+            <div>
+              <p style={styles.selectorLabel}>Choose your coach</p>
+              <div style={styles.pillGroup}>
+                {COACH_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    style={coach === opt.value ? styles.pillActive : styles.pill}
+                    onClick={() => setCoach(opt.value)}
+                  >
+                    {opt.name}
+                  </button>
+                ))}
+              </div>
+              <p style={styles.selectorDesc}>
+                {COACH_OPTIONS.find((o) => o.value === coach)?.tagline}
+              </p>
+            </div>
+
             <button
-              style={{
-                ...styles.startButton,
-                ...(!userName.trim() ? styles.startButtonDisabled : {}),
-              }}
+              style={{ ...styles.startButton, ...(!userName.trim() ? styles.startButtonDisabled : {}) }}
               onClick={startChat}
               disabled={!userName.trim()}
             >
               Start your session →
             </button>
+
           </div>
         </div>
 
@@ -192,14 +230,16 @@ export default function Home() {
     );
   }
 
-  // ── Chat screen ─────────────────────────────────────────────────────────────
+  // ── Chat ────────────────────────────────────────────────────────────────────
+  const coachName = COACH_OPTIONS.find((o) => o.value === coach)?.name ?? "Your Coach";
+
   return (
     <div style={styles.chatContainer}>
       <header style={styles.header}>
         <div style={styles.headerRow}>
           <div>
             <h1 style={styles.headerTitle}>🌿 Mental Coach</h1>
-            <p style={styles.headerSubtitle}>Session with {userName}</p>
+            <p style={styles.headerSubtitle}>{userName} · {coachName}</p>
           </div>
           <button style={styles.newSessionButton} onClick={clearSession}>
             New session
@@ -211,7 +251,6 @@ export default function Home() {
         {messages.map((msg, i) => {
           const isStreamingBubble =
             streaming && msg.role === "assistant" && i === messages.length - 1;
-
           return (
             <div
               key={i}
@@ -221,15 +260,11 @@ export default function Home() {
               }}
             >
               {isStreamingBubble && msg.content === "" ? (
-                <span style={styles.typingDots}>
-                  <span>●</span><span>●</span><span>●</span>
-                </span>
+                <span style={styles.typingDots}><span>●</span><span>●</span><span>●</span></span>
               ) : (
                 <>
                   {msg.content}
-                  {isStreamingBubble && (
-                    <span style={styles.cursor} aria-hidden="true">▍</span>
-                  )}
+                  {isStreamingBubble && <span style={styles.cursor} aria-hidden="true">▍</span>}
                 </>
               )}
             </div>
@@ -249,10 +284,7 @@ export default function Home() {
           disabled={streaming}
         />
         <button
-          style={{
-            ...styles.sendButton,
-            ...(streaming || !input.trim() ? styles.sendButtonDisabled : {}),
-          }}
+          style={{ ...styles.sendButton, ...(streaming || !input.trim() ? styles.sendButtonDisabled : {}) }}
           onClick={sendMessage}
           disabled={streaming || !input.trim()}
         >
@@ -263,18 +295,19 @@ export default function Home() {
   );
 }
 
-// ── Styles ───────────────────────────────────────────────────────────────────
+// ── Styles ────────────────────────────────────────────────────────────────────
 
 const styles: Record<string, React.CSSProperties> = {
   // Landing
   landingContainer: {
     display: "flex",
     flexDirection: "column",
-    height: "100vh",
+    minHeight: "100vh",
     width: "100%",
   },
   hero: {
     height: "50vh",
+    flexShrink: 0,
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
@@ -284,53 +317,65 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: "center",
     background: "#1A101E",
   },
-  heroEmoji: {
-    fontSize: "52px",
-    lineHeight: "1",
-  },
-  heroTitle: {
-    fontSize: "42px",
-    fontWeight: 800,
-    color: "#FFFFFF",
-    letterSpacing: "-0.5px",
-  },
-  heroSubtitle: {
-    fontSize: "16px",
-    color: "#6B7280",
-    maxWidth: "360px",
-    lineHeight: "1.5",
-  },
+  heroEmoji: { fontSize: "52px", lineHeight: "1" },
+  heroTitle: { fontSize: "42px", fontWeight: 800, color: "#FFFFFF", letterSpacing: "-0.5px" },
+  heroSubtitle: { fontSize: "16px", color: "#6B7280", maxWidth: "360px", lineHeight: "1.5" },
+
   formSection: {
-    height: "50vh",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: "0 24px",
+    flex: 1,
+    overflowY: "auto",
+    padding: "32px 24px 48px",
     borderTop: "1px solid #483550",
     background: "#26152D",
   },
   formCard: {
     display: "flex",
     flexDirection: "column",
-    gap: "16px",
+    gap: "24px",
     width: "100%",
-    maxWidth: "400px",
+    maxWidth: "440px",
+    margin: "0 auto",
   },
-  formLabel: {
-    fontSize: "18px",
-    fontWeight: 600,
-    color: "#FFFFFF",
-  },
+  formLabel: { display: "block", fontSize: "15px", fontWeight: 600, color: "#FFFFFF", marginBottom: "8px" },
   formInput: {
+    width: "100%",
     padding: "14px 16px",
     borderRadius: "12px",
     border: "1px solid #483550",
-    background: "#26152D",
+    background: "#1A101E",
     color: "#FFFFFF",
     fontSize: "16px",
     outline: "none",
     transition: "border-color 200ms ease",
+    boxSizing: "border-box",
   },
+
+  selectorLabel: { fontSize: "15px", fontWeight: 600, color: "#FFFFFF", marginBottom: "10px" },
+  pillGroup: { display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "8px" },
+  pill: {
+    padding: "7px 16px",
+    borderRadius: "20px",
+    border: "1px solid #483550",
+    background: "transparent",
+    color: "#6B7280",
+    fontSize: "14px",
+    cursor: "pointer",
+    transition: "all 200ms ease",
+    whiteSpace: "nowrap",
+  },
+  pillActive: {
+    padding: "7px 16px",
+    borderRadius: "20px",
+    border: "1px solid #9472B6",
+    background: "#9472B6",
+    color: "#FFFFFF",
+    fontSize: "14px",
+    cursor: "pointer",
+    transition: "all 200ms ease",
+    whiteSpace: "nowrap",
+  },
+  selectorDesc: { fontSize: "12px", color: "#6B7280", marginTop: "8px", minHeight: "16px" },
+
   startButton: {
     padding: "14px",
     borderRadius: "12px",
@@ -366,11 +411,9 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: "0 0 12px 12px",
     boxShadow: "0 4px 24px rgba(167, 139, 250, 0.1)",
   },
-  headerRow: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
+  headerRow: { display: "flex", alignItems: "center", justifyContent: "space-between" },
+  headerTitle: { fontSize: "22px", fontWeight: 700, color: "#FFFFFF" },
+  headerSubtitle: { fontSize: "13px", color: "#6B7280", marginTop: "2px" },
   newSessionButton: {
     padding: "7px 14px",
     borderRadius: "8px",
@@ -381,16 +424,7 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: "pointer",
     transition: "all 200ms ease",
   },
-  headerTitle: {
-    fontSize: "22px",
-    fontWeight: 700,
-    color: "#FFFFFF",
-  },
-  headerSubtitle: {
-    fontSize: "13px",
-    color: "#6B7280",
-    marginTop: "2px",
-  },
+
   messageList: {
     flex: 1,
     overflowY: "auto",
@@ -423,19 +457,9 @@ const styles: Record<string, React.CSSProperties> = {
     borderBottomLeftRadius: "4px",
     boxShadow: "0 4px 24px rgba(167, 139, 250, 0.1)",
   },
-  typingDots: {
-    display: "inline-flex",
-    gap: "4px",
-    alignItems: "center",
-    fontSize: "20px",
-    color: "#6B7280",
-  },
-  cursor: {
-    display: "inline-block",
-    marginLeft: "1px",
-    color: "#9472B6",
-    animation: "blink 1s step-end infinite",
-  },
+  typingDots: { display: "inline-flex", gap: "4px", alignItems: "center", fontSize: "20px", color: "#6B7280" },
+  cursor: { display: "inline-block", marginLeft: "1px", color: "#9472B6", animation: "blink 1s step-end infinite" },
+
   inputArea: {
     display: "flex",
     gap: "10px",
@@ -475,9 +499,5 @@ const styles: Record<string, React.CSSProperties> = {
     whiteSpace: "nowrap",
     transition: "background 200ms ease",
   },
-  sendButtonDisabled: {
-    background: "#483550",
-    color: "#6B7280",
-    cursor: "not-allowed",
-  },
+  sendButtonDisabled: { background: "#483550", color: "#6B7280", cursor: "not-allowed" },
 };

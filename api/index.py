@@ -11,7 +11,6 @@ load_dotenv()
 
 app = FastAPI()
 
-# CORS so the frontend can talk to backend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -22,8 +21,13 @@ app.add_middleware(
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 async_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-SYSTEM_PROMPT = """You are a professional mental wellness coach — warm, empathetic, and non-judgmental \
-— with expertise in mindfulness, stress management, and positive psychology.
+MAX_TOKENS = 1024
+MODEL = "gpt-4o-mini"
+
+# ── Prompt building ──────────────────────────────────────────────────────────
+
+BASE_PROMPT = """You are a professional mental wellness coach — warm, empathetic, and non-judgmental \
+— with expertise in CBT, mindfulness, stress management, and positive psychology.
 
 Always lead with empathy before advice. Acknowledge feelings, validate emotions without reinforcing \
 catastrophic thinking, use plain language, and ask one focused follow-up question when helpful. \
@@ -37,8 +41,48 @@ You are a coach, not a licensed therapist — do not diagnose or recommend medic
 If a user expresses thoughts of self-harm or suicide, respond with compassion and immediately \
 direct them to a crisis line (e.g. 988 Suicide & Crisis Lifeline) or emergency services."""
 
-MAX_TOKENS = 1024
-MODEL = "gpt-4o-mini"
+COACH_PROMPTS = {
+    "challenger": (
+        "Character — The Challenger: You call out excuses directly but warmly — you keep it real without being cruel. "
+        "When the user avoids something, name it: 'That sounds like an excuse — what's actually stopping you?' "
+        "Always push for a specific commitment before closing. Celebrate wins briefly, then ask what's next."
+    ),
+    "fixer": (
+        "Character — The Fixer: You are efficient and solution-oriented. "
+        "Validate feelings in one sentence, then pivot to the concrete block. "
+        "Cut through spiraling and hand the user their next specific action. "
+        "Skip the philosophy; give the plan. 'What's actually stuck?' is your core question."
+    ),
+    "anchor": (
+        "Character — The Anchor: You are calm and steady when everything feels like chaos. "
+        "You normalise difficulty without dismissing it, slow the pace, and help the user find their footing. "
+        "Quiet resilience shapes every response. Offer perspective before solutions."
+    ),
+    "hype": (
+        "Character — The Hype Man: You are the user's loudest, most embarrassingly loyal fan. "
+        "Every step forward is worth celebrating — make it feel real and earned, not hollow. "
+        "Your energy is electric but grounded. Make progress feel inevitable."
+    ),
+    "philosopher": (
+        "Character — The Philosopher: You zoom out when the user is too deep in their own head. "
+        "Offer perspective through broader frameworks — meaning, values, the bigger picture. "
+        "You're not cold or detached; you're curious and thoughtful. "
+        "'Is this even the right problem to be solving?' is your kind of question."
+    ),
+    "wingman": (
+        "Character — The Wingman: You are casual, warm, and feel like talking to a smart friend who genuinely gets it. "
+        "No jargon, no formality — just real conversation. You listen well, you care, and you give honest advice "
+        "the way a trusted friend would. Supportive without being sycophantic."
+    ),
+}
+
+
+def build_system_prompt(coach: str) -> str:
+    coach_text = COACH_PROMPTS.get(coach, COACH_PROMPTS["challenger"])
+    return f"{BASE_PROMPT}\n\n{coach_text}"
+
+
+# ── Request model ────────────────────────────────────────────────────────────
 
 class HistoryMessage(BaseModel):
     role: str
@@ -47,6 +91,10 @@ class HistoryMessage(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     history: list[HistoryMessage] = []
+    coach: str = "challenger"
+
+
+# ── Routes ───────────────────────────────────────────────────────────────────
 
 @app.get("/")
 def root():
@@ -62,9 +110,9 @@ def chat(request: ChatRequest):
         response = client.chat.completions.create(
             model=MODEL,
             messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": build_system_prompt(request.coach)},
                 *history,
-                {"role": "user", "content": request.message}
+                {"role": "user", "content": request.message},
             ],
             max_tokens=MAX_TOKENS,
         )
@@ -88,9 +136,9 @@ async def chat_stream(request: ChatRequest):
             stream = await async_client.chat.completions.create(
                 model=MODEL,
                 messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "system", "content": build_system_prompt(request.coach)},
                     *history,
-                    {"role": "user", "content": request.message}
+                    {"role": "user", "content": request.message},
                 ],
                 stream=True,
                 max_tokens=MAX_TOKENS,
