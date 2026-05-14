@@ -40,8 +40,13 @@ direct them to a crisis line (e.g. 988 Suicide & Crisis Lifeline) or emergency s
 MAX_TOKENS = 1024
 MODEL = "gpt-4o-mini"
 
+class HistoryMessage(BaseModel):
+    role: str
+    content: str
+
 class ChatRequest(BaseModel):
     message: str
+    history: list[HistoryMessage] = []
 
 @app.get("/")
 def root():
@@ -53,10 +58,12 @@ def chat(request: ChatRequest):
         raise HTTPException(status_code=500, detail="OPENAI_API_KEY not configured")
 
     try:
+        history = [{"role": m.role, "content": m.content} for m in request.history[-5:]]
         response = client.chat.completions.create(
             model=MODEL,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
+                *history,
                 {"role": "user", "content": request.message}
             ],
             max_tokens=MAX_TOKENS,
@@ -77,10 +84,12 @@ async def chat_stream(request: ChatRequest):
 
     async def token_generator():
         try:
+            history = [{"role": m.role, "content": m.content} for m in request.history[-5:]]
             stream = await async_client.chat.completions.create(
                 model=MODEL,
                 messages=[
                     {"role": "system", "content": SYSTEM_PROMPT},
+                    *history,
                     {"role": "user", "content": request.message}
                 ],
                 stream=True,

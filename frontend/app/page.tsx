@@ -7,14 +7,26 @@ type Message = {
   content: string;
 };
 
+const STORAGE_KEY = "mental-coach-history";
+
+const INITIAL_MESSAGE: Message = {
+  role: "assistant",
+  content:
+    "Hi! I'm your supportive mental coach. I'm here to help with stress, motivation, habits, and confidence. What's on your mind today?",
+};
+
+function loadHistory(): Message[] {
+  if (typeof window === "undefined") return [INITIAL_MESSAGE];
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? JSON.parse(saved) : [INITIAL_MESSAGE];
+  } catch {
+    return [INITIAL_MESSAGE];
+  }
+}
+
 export default function Home() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "assistant",
-      content:
-        "Hi! I'm your supportive mental coach. I'm here to help with stress, motivation, habits, and confidence. What's on your mind today?",
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>(loadHistory);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -24,9 +36,24 @@ export default function Home() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Persist to localStorage only after streaming completes
+  useEffect(() => {
+    if (!streaming) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+    }
+  }, [messages, streaming]);
+
+  function clearChat() {
+    setMessages([INITIAL_MESSAGE]);
+    localStorage.removeItem(STORAGE_KEY);
+  }
+
   async function sendMessage() {
     const text = input.trim();
     if (!text || streaming) return;
+
+    // Snapshot current messages as history before updating state
+    const history = messages;
 
     setMessages((prev) => [...prev, { role: "user", content: text }]);
     setInput("");
@@ -42,7 +69,7 @@ export default function Home() {
       const res = await fetch("/api/chat/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify({ message: text, history }),
         signal: controller.signal,
       });
 
@@ -61,7 +88,7 @@ export default function Home() {
 
         // SSE lines are separated by double newlines: "data: {...}\n\n"
         const lines = buffer.split("\n\n");
-        buffer = lines.pop() ?? ""; // keep any incomplete trailing chunk
+        buffer = lines.pop() ?? "";
 
         for (const line of lines) {
           const trimmed = line.replace(/^data: /, "").trim();
@@ -77,7 +104,6 @@ export default function Home() {
           if (parsed.error) throw new Error(parsed.error);
           if (parsed.done) { streamDone = true; break; }
           if (parsed.token) {
-            // Capture token as const so the closure captures a stable value
             const token = parsed.token;
             setMessages((prev) => {
               const next = [...prev];
@@ -92,7 +118,6 @@ export default function Home() {
       if ((err as Error).name === "AbortError") return;
       setMessages((prev) => {
         const next = [...prev];
-        // Replace empty assistant bubble with error text
         if (next[next.length - 1].role === "assistant" && !next[next.length - 1].content) {
           next[next.length - 1] = {
             role: "assistant",
@@ -122,8 +147,13 @@ export default function Home() {
   return (
     <div style={styles.container}>
       <header style={styles.header}>
-        <h1 style={styles.headerTitle}>🌿 Mental Coach</h1>
-        <p style={styles.headerSubtitle}>Your supportive AI companion</p>
+        <div>
+          <h1 style={styles.headerTitle}>🌿 Mental Coach</h1>
+          <p style={styles.headerSubtitle}>Your supportive AI companion</p>
+        </div>
+        <button style={styles.clearButton} onClick={clearChat} disabled={streaming}>
+          Clear chat
+        </button>
       </header>
 
       <div style={styles.messageList}>
@@ -141,7 +171,6 @@ export default function Home() {
                 ...(msg.role === "user" ? styles.userBubble : styles.assistantBubble),
               }}
             >
-              {/* Show dots while the bubble is empty and we're waiting for first token */}
               {isStreamingBubble && msg.content === "" ? (
                 <span style={styles.typingDots}>
                   <span>●</span><span>●</span><span>●</span>
@@ -149,7 +178,6 @@ export default function Home() {
               ) : (
                 <>
                   {msg.content}
-                  {/* Blinking cursor while tokens are arriving */}
                   {isStreamingBubble && (
                     <span style={styles.cursor} aria-hidden="true">▍</span>
                   )}
@@ -196,6 +224,9 @@ const styles: Record<string, React.CSSProperties> = {
     width: "100%",
   },
   header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: "20px 24px 16px",
     borderBottom: "1px solid #483550",
     background: "#1A101E",
@@ -211,6 +242,17 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "13px",
     color: "#6B7280",
     marginTop: "2px",
+  },
+  clearButton: {
+    padding: "8px 16px",
+    borderRadius: "10px",
+    border: "1px solid #483550",
+    background: "transparent",
+    color: "#6B7280",
+    fontSize: "13px",
+    cursor: "pointer",
+    transition: "all 200ms ease",
+    whiteSpace: "nowrap",
   },
   messageList: {
     flex: 1,
