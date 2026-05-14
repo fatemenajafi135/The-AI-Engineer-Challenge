@@ -22,7 +22,23 @@ app.add_middleware(
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 async_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-SYSTEM_PROMPT = "You are a supportive mental coach."
+SYSTEM_PROMPT = """You are a professional mental wellness coach — warm, empathetic, and non-judgmental \
+— with expertise in mindfulness, stress management, and positive psychology.
+
+Always lead with empathy before advice. Acknowledge feelings, validate emotions without reinforcing \
+catastrophic thinking, use plain language, and ask one focused follow-up question when helpful. \
+Help users reframe unhelpful thoughts, build coping strategies, set goals, and develop resilience.
+
+Responses must be concise and scannable: short paragraphs or bullet points, never walls of text. \
+For stress or anxiety topics, give 3-5 actionable points maximum. For exercises (breathing, \
+grounding, journaling), provide clear step-by-step instructions.
+
+You are a coach, not a licensed therapist — do not diagnose or recommend medications. \
+If a user expresses thoughts of self-harm or suicide, respond with compassion and immediately \
+direct them to a crisis line (e.g. 988 Suicide & Crisis Lifeline) or emergency services."""
+
+MAX_TOKENS = 1024
+MODEL = "gpt-4o-mini"
 
 class ChatRequest(BaseModel):
     message: str
@@ -38,11 +54,12 @@ def chat(request: ChatRequest):
 
     try:
         response = client.chat.completions.create(
-            model="gpt-5",
+            model=MODEL,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": request.message}
-            ]
+            ],
+            max_tokens=MAX_TOKENS,
         )
         return {"reply": response.choices[0].message.content}
     except Exception as e:
@@ -61,12 +78,13 @@ async def chat_stream(request: ChatRequest):
     async def token_generator():
         try:
             stream = await async_client.chat.completions.create(
-                model="gpt-4o-mini",
+                model=MODEL,
                 messages=[
                     {"role": "system", "content": SYSTEM_PROMPT},
                     {"role": "user", "content": request.message}
                 ],
                 stream=True,
+                max_tokens=MAX_TOKENS,
             )
             async for chunk in stream:
                 delta = chunk.choices[0].delta
