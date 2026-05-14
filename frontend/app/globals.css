@@ -8,8 +8,8 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background-color: #1a1035;
-  color: #ede9fe;
+  background-color: #26152D;
+  color: #FFFFFF;
   height: 100vh;
   display: flex;
   flex-direction: column;
@@ -19,10 +19,10 @@ body {
   width: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #1a1035;
+  background: #26152D;
 }
 ::-webkit-scrollbar-thumb {
-  background: #3b2f6e;
+  background: #483550;
   border-radius: 3px;
 }
 

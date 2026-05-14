@@ -22,17 +22,17 @@
 ## Frontend Theme & Design Rules
 
 ### Color Scheme
-- Primary background: #1a1035
-- Card/surface (header, input bar): #2d1f5e
-- User message bubble: #a78bfa
-- User message text: #1a1035
-- Assistant message bubble: #2d1f5e
-- Assistant message text: #ede9fe
-- Text primary: #ede9fe
-- Text secondary: #a78bfa
-- Accent (send button): #a78bfa
-- Accent hover: #c4b5fd
-- Border color: #3b2f6e
+- Primary background: #26152D
+- Card/surface (header, input bar): #1A101E
+- User message bubble: #9472B6
+- User message text: #FFFFFF
+- Assistant message bubble: #483550
+- Assistant message text: #FFFFFF
+- Text primary: #FFFFFF
+- Text secondary: #6B7280
+- Accent (send button): #9472B6
+- Accent hover: #483550
+- Border color: #483550
 
 ### Style
 - Minimal, deep indigo dark mode only
