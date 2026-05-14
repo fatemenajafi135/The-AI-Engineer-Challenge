@@ -23,7 +23,9 @@ export default function Home() {
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [showScrollBtn, setShowScrollBtn] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -54,9 +56,33 @@ export default function Home() {
     }
   }, [messages]);
 
+  // Show jump-to-bottom button when user scrolls up.
+  // Depends on `phase` so the listener re-attaches once the chat screen mounts.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const list = listRef.current;
+    if (!list) return;
+    const onScroll = () => {
+      const distanceFromBottom = list.scrollHeight - list.scrollTop - list.clientHeight;
+      setShowScrollBtn(distanceFromBottom > 80);
+    };
+    list.addEventListener("scroll", onScroll);
+    return () => list.removeEventListener("scroll", onScroll);
+  }, [phase]);
+
+  // Auto-scroll to bottom only when already near the bottom
+  useEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+    const distanceFromBottom = list.scrollHeight - list.scrollTop - list.clientHeight;
+    if (distanceFromBottom < 80) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages]);
+
+  function scrollToBottom() {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    setShowScrollBtn(false);
+  }
 
   function startChat() {
     const name = userName.trim();
@@ -261,7 +287,13 @@ export default function Home() {
         </div>
       </header>
 
-      <div style={styles.messageList}>
+      <div style={styles.messageListWrapper}>
+        {showScrollBtn && (
+          <button style={styles.scrollToBottomBtn} onClick={scrollToBottom} aria-label="Jump to bottom">
+            ↓
+          </button>
+        )}
+      <div ref={listRef} style={styles.messageList}>
         {messages.map((msg, i) => {
           const isStreamingBubble =
             streaming && msg.role === "assistant" && i === messages.length - 1;
@@ -285,6 +317,7 @@ export default function Home() {
           );
         })}
         <div ref={bottomRef} />
+      </div>
       </div>
 
       <div style={styles.inputArea}>
@@ -440,8 +473,29 @@ const styles: Record<string, React.CSSProperties> = {
     transition: "all 200ms ease",
   },
 
-  messageList: {
+  messageListWrapper: {
     flex: 1,
+    position: "relative",
+    overflow: "hidden",
+  },
+  scrollToBottomBtn: {
+    position: "absolute",
+    bottom: "16px",
+    left: "50%",
+    transform: "translateX(-50%)",
+    zIndex: 10,
+    padding: "6px 16px",
+    borderRadius: "20px",
+    border: "1px solid #483550",
+    background: "#1A101E",
+    color: "#9472B6",
+    fontSize: "16px",
+    cursor: "pointer",
+    boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
+    transition: "all 200ms ease",
+  },
+  messageList: {
+    height: "100%",
     overflowY: "auto",
     padding: "24px 16px",
     display: "flex",
