@@ -2,64 +2,75 @@
 
 import { useState, useRef, useEffect } from "react";
 
-type Message = {
-  role: "user" | "assistant";
-  content: string;
-};
-
-const STORAGE_KEY = "mental-coach-history";
-
-const INITIAL_MESSAGE: Message = {
-  role: "assistant",
-  content:
-    "Hi! I'm your supportive mental coach. I'm here to help with stress, motivation, habits, and confidence. What's on your mind today?",
-};
-
-function loadHistory(): Message[] {
-  if (typeof window === "undefined") return [INITIAL_MESSAGE];
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : [INITIAL_MESSAGE];
-  } catch {
-    return [INITIAL_MESSAGE];
-  }
-}
+type Message = { role: "user" | "assistant"; content: string };
+type Phase = "landing" | "chat";
 
 export default function Home() {
-  const [messages, setMessages] = useState<Message[]>(loadHistory);
+  const [phase, setPhase] = useState<Phase>("landing");
+  const [userName, setUserName] = useState("");
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Restore session from localStorage on mount (localStorage is client-only)
+  useEffect(() => {
+    const savedName = localStorage.getItem("mc_userName");
+    const savedMessages = localStorage.getItem("mc_messages");
+    if (savedName) {
+      setUserName(savedName);
+      if (savedMessages) {
+        try {
+          setMessages(JSON.parse(savedMessages));
+          setPhase("chat");
+        } catch {
+          // corrupted data — start fresh
+        }
+      }
+    }
+    setMounted(true);
+  }, []);
+
+  // Persist messages whenever they change
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem("mc_messages", JSON.stringify(messages));
+    }
+  }, [messages]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Persist to localStorage only after streaming completes
-  useEffect(() => {
-    if (!streaming) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
-    }
-  }, [messages, streaming]);
+  function startChat() {
+    const name = userName.trim();
+    if (!name) return;
+    localStorage.setItem("mc_userName", name);
+    const greeting: Message = {
+      role: "assistant",
+      content: `Hi ${name}! I'm your mental wellness coach — here to support you with stress, motivation, habits, and confidence. What's on your mind today?`,
+    };
+    setMessages([greeting]);
+    setPhase("chat");
+  }
 
-  function clearChat() {
-    setMessages([INITIAL_MESSAGE]);
-    localStorage.removeItem(STORAGE_KEY);
+  function clearSession() {
+    localStorage.removeItem("mc_userName");
+    localStorage.removeItem("mc_messages");
+    setUserName("");
+    setMessages([]);
+    setPhase("landing");
   }
 
   async function sendMessage() {
     const text = input.trim();
     if (!text || streaming) return;
 
-    // Snapshot current messages as history before updating state
-    const history = messages;
-
     setMessages((prev) => [...prev, { role: "user", content: text }]);
     setInput("");
     setStreaming(true);
-
-    // Append an empty assistant bubble that we'll fill token-by-token
     setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
     const controller = new AbortController();
@@ -69,7 +80,7 @@ export default function Home() {
       const res = await fetch("/api/chat/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, history }),
+        body: JSON.stringify({ message: text }),
         signal: controller.signal,
       });
 
@@ -85,8 +96,6 @@ export default function Home() {
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-
-        // SSE lines are separated by double newlines: "data: {...}\n\n"
         const lines = buffer.split("\n\n");
         buffer = lines.pop() ?? "";
 
@@ -95,11 +104,8 @@ export default function Home() {
           if (!trimmed) continue;
 
           let parsed: { token?: string; done?: boolean; error?: string };
-          try {
-            parsed = JSON.parse(trimmed);
-          } catch {
-            continue;
-          }
+          try { parsed = JSON.parse(trimmed); }
+          catch { continue; }
 
           if (parsed.error) throw new Error(parsed.error);
           if (parsed.done) { streamDone = true; break; }
@@ -118,16 +124,11 @@ export default function Home() {
       if ((err as Error).name === "AbortError") return;
       setMessages((prev) => {
         const next = [...prev];
-        if (next[next.length - 1].role === "assistant" && !next[next.length - 1].content) {
-          next[next.length - 1] = {
-            role: "assistant",
-            content: "Sorry, something went wrong. Please try again.",
-          };
+        const last = next[next.length - 1];
+        if (last.role === "assistant" && !last.content) {
+          next[next.length - 1] = { role: "assistant", content: "Sorry, something went wrong. Please try again." };
         } else {
-          next.push({
-            role: "assistant",
-            content: "Sorry, something went wrong. Please try again.",
-          });
+          next.push({ role: "assistant", content: "Sorry, something went wrong. Please try again." });
         }
         return next;
       });
@@ -138,30 +139,78 @@ export default function Home() {
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   }
 
-  return (
-    <div style={styles.container}>
-      <header style={styles.header}>
-        <div>
-          <h1 style={styles.headerTitle}>🌿 Mental Coach</h1>
-          <p style={styles.headerSubtitle}>Your supportive AI companion</p>
+  // Hold render until localStorage has been checked — avoids a landing flash on refresh
+  if (!mounted) return null;
+
+  // ── Landing screen ──────────────────────────────────────────────────────────
+  if (phase === "landing") {
+    return (
+      <div style={styles.landingContainer}>
+
+        {/* Top 50% — hero */}
+        <div style={styles.hero}>
+          <span style={styles.heroEmoji}>🌿</span>
+          <h1 style={styles.heroTitle}>Mental Coach</h1>
+          <p style={styles.heroSubtitle}>
+            Your supportive AI companion for stress, motivation &amp; wellbeing
+          </p>
         </div>
-        <button style={styles.clearButton} onClick={clearChat} disabled={streaming}>
-          Clear chat
-        </button>
+
+        {/* Bottom 50% — form */}
+        <div style={styles.formSection}>
+          <div style={styles.formCard}>
+            <label style={styles.formLabel} htmlFor="name-input">
+              What&apos;s your name?
+            </label>
+            <input
+              id="name-input"
+              style={styles.formInput}
+              type="text"
+              value={userName}
+              onChange={(e) => setUserName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && startChat()}
+              placeholder="Enter your name…"
+              autoFocus
+            />
+            <button
+              style={{
+                ...styles.startButton,
+                ...(!userName.trim() ? styles.startButtonDisabled : {}),
+              }}
+              onClick={startChat}
+              disabled={!userName.trim()}
+            >
+              Start your session →
+            </button>
+          </div>
+        </div>
+
+      </div>
+    );
+  }
+
+  // ── Chat screen ─────────────────────────────────────────────────────────────
+  return (
+    <div style={styles.chatContainer}>
+      <header style={styles.header}>
+        <div style={styles.headerRow}>
+          <div>
+            <h1 style={styles.headerTitle}>🌿 Mental Coach</h1>
+            <p style={styles.headerSubtitle}>Session with {userName}</p>
+          </div>
+          <button style={styles.newSessionButton} onClick={clearSession}>
+            New session
+          </button>
+        </div>
       </header>
 
       <div style={styles.messageList}>
         {messages.map((msg, i) => {
           const isStreamingBubble =
-            streaming &&
-            msg.role === "assistant" &&
-            i === messages.length - 1;
+            streaming && msg.role === "assistant" && i === messages.length - 1;
 
           return (
             <div
@@ -214,8 +263,95 @@ export default function Home() {
   );
 }
 
+// ── Styles ───────────────────────────────────────────────────────────────────
+
 const styles: Record<string, React.CSSProperties> = {
-  container: {
+  // Landing
+  landingContainer: {
+    display: "flex",
+    flexDirection: "column",
+    height: "100vh",
+    width: "100%",
+  },
+  hero: {
+    height: "50vh",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "12px",
+    padding: "0 24px",
+    textAlign: "center",
+    background: "#1A101E",
+  },
+  heroEmoji: {
+    fontSize: "52px",
+    lineHeight: "1",
+  },
+  heroTitle: {
+    fontSize: "42px",
+    fontWeight: 800,
+    color: "#FFFFFF",
+    letterSpacing: "-0.5px",
+  },
+  heroSubtitle: {
+    fontSize: "16px",
+    color: "#6B7280",
+    maxWidth: "360px",
+    lineHeight: "1.5",
+  },
+  formSection: {
+    height: "50vh",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "0 24px",
+    borderTop: "1px solid #483550",
+    background: "#26152D",
+  },
+  formCard: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "16px",
+    width: "100%",
+    maxWidth: "400px",
+  },
+  formLabel: {
+    fontSize: "18px",
+    fontWeight: 600,
+    color: "#FFFFFF",
+  },
+  formInput: {
+    padding: "14px 16px",
+    borderRadius: "12px",
+    border: "1px solid #483550",
+    background: "#26152D",
+    color: "#FFFFFF",
+    fontSize: "16px",
+    outline: "none",
+    transition: "border-color 200ms ease",
+  },
+  startButton: {
+    padding: "14px",
+    borderRadius: "12px",
+    border: "none",
+    background: "#9472B6",
+    color: "#FFFFFF",
+    fontSize: "16px",
+    fontWeight: 600,
+    cursor: "pointer",
+    transition: "background 200ms ease",
+    boxShadow: "0 4px 24px rgba(167, 139, 250, 0.2)",
+  },
+  startButtonDisabled: {
+    background: "#483550",
+    color: "#6B7280",
+    cursor: "not-allowed",
+    boxShadow: "none",
+  },
+
+  // Chat
+  chatContainer: {
     display: "flex",
     flexDirection: "column",
     height: "100vh",
@@ -224,14 +360,26 @@ const styles: Record<string, React.CSSProperties> = {
     width: "100%",
   },
   header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
     padding: "20px 24px 16px",
     borderBottom: "1px solid #483550",
     background: "#1A101E",
     borderRadius: "0 0 12px 12px",
     boxShadow: "0 4px 24px rgba(167, 139, 250, 0.1)",
+  },
+  headerRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  newSessionButton: {
+    padding: "7px 14px",
+    borderRadius: "8px",
+    border: "1px solid #483550",
+    background: "transparent",
+    color: "#6B7280",
+    fontSize: "13px",
+    cursor: "pointer",
+    transition: "all 200ms ease",
   },
   headerTitle: {
     fontSize: "22px",
@@ -242,17 +390,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "13px",
     color: "#6B7280",
     marginTop: "2px",
-  },
-  clearButton: {
-    padding: "8px 16px",
-    borderRadius: "10px",
-    border: "1px solid #483550",
-    background: "transparent",
-    color: "#6B7280",
-    fontSize: "13px",
-    cursor: "pointer",
-    transition: "all 200ms ease",
-    whiteSpace: "nowrap",
   },
   messageList: {
     flex: 1,
