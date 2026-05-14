@@ -16,8 +16,9 @@ export default function Home() {
     },
   ]);
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [streaming, setStreaming] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -25,36 +26,89 @@ export default function Home() {
 
   async function sendMessage() {
     const text = input.trim();
-    if (!text || loading) return;
+    if (!text || streaming) return;
 
     setMessages((prev) => [...prev, { role: "user", content: text }]);
     setInput("");
-    setLoading(true);
+    setStreaming(true);
+
+    // Append an empty assistant bubble that we'll fill token-by-token
+    setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     try {
-      const res = await fetch("/api/chat", {
+      const res = await fetch("/api/chat/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: text }),
+        signal: controller.signal,
       });
 
-      if (!res.ok) throw new Error("Server error");
+      if (!res.ok || !res.body) throw new Error("Server error");
 
-      const data = await res.json();
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: data.reply },
-      ]);
-    } catch {
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: "Sorry, something went wrong. Please try again.",
-        },
-      ]);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let streamDone = false;
+
+      while (!streamDone) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // SSE lines are separated by double newlines: "data: {...}\n\n"
+        const lines = buffer.split("\n\n");
+        buffer = lines.pop() ?? ""; // keep any incomplete trailing chunk
+
+        for (const line of lines) {
+          const trimmed = line.replace(/^data: /, "").trim();
+          if (!trimmed) continue;
+
+          let parsed: { token?: string; done?: boolean; error?: string };
+          try {
+            parsed = JSON.parse(trimmed);
+          } catch {
+            continue;
+          }
+
+          if (parsed.error) throw new Error(parsed.error);
+          if (parsed.done) { streamDone = true; break; }
+          if (parsed.token) {
+            // Capture token as const so the closure captures a stable value
+            const token = parsed.token;
+            setMessages((prev) => {
+              const next = [...prev];
+              const last = next[next.length - 1];
+              next[next.length - 1] = { ...last, content: last.content + token };
+              return next;
+            });
+          }
+        }
+      }
+    } catch (err) {
+      if ((err as Error).name === "AbortError") return;
+      setMessages((prev) => {
+        const next = [...prev];
+        // Replace empty assistant bubble with error text
+        if (next[next.length - 1].role === "assistant" && !next[next.length - 1].content) {
+          next[next.length - 1] = {
+            role: "assistant",
+            content: "Sorry, something went wrong. Please try again.",
+          };
+        } else {
+          next.push({
+            role: "assistant",
+            content: "Sorry, something went wrong. Please try again.",
+          });
+        }
+        return next;
+      });
     } finally {
-      setLoading(false);
+      setStreaming(false);
+      abortRef.current = null;
     }
   }
 
@@ -73,24 +127,37 @@ export default function Home() {
       </header>
 
       <div style={styles.messageList}>
-        {messages.map((msg, i) => (
-          <div
-            key={i}
-            style={{
-              ...styles.messageBubble,
-              ...(msg.role === "user"
-                ? styles.userBubble
-                : styles.assistantBubble),
-            }}
-          >
-            {msg.content}
-          </div>
-        ))}
-        {loading && (
-          <div style={{ ...styles.messageBubble, ...styles.assistantBubble, ...styles.typing }}>
-            <span>●</span><span>●</span><span>●</span>
-          </div>
-        )}
+        {messages.map((msg, i) => {
+          const isStreamingBubble =
+            streaming &&
+            msg.role === "assistant" &&
+            i === messages.length - 1;
+
+          return (
+            <div
+              key={i}
+              style={{
+                ...styles.messageBubble,
+                ...(msg.role === "user" ? styles.userBubble : styles.assistantBubble),
+              }}
+            >
+              {/* Show dots while the bubble is empty and we're waiting for first token */}
+              {isStreamingBubble && msg.content === "" ? (
+                <span style={styles.typingDots}>
+                  <span>●</span><span>●</span><span>●</span>
+                </span>
+              ) : (
+                <>
+                  {msg.content}
+                  {/* Blinking cursor while tokens are arriving */}
+                  {isStreamingBubble && (
+                    <span style={styles.cursor} aria-hidden="true">▍</span>
+                  )}
+                </>
+              )}
+            </div>
+          );
+        })}
         <div ref={bottomRef} />
       </div>
 
@@ -102,15 +169,15 @@ export default function Home() {
           onKeyDown={handleKeyDown}
           placeholder="Share what's on your mind… (Enter to send, Shift+Enter for new line)"
           rows={1}
-          disabled={loading}
+          disabled={streaming}
         />
         <button
           style={{
             ...styles.sendButton,
-            ...(loading || !input.trim() ? styles.sendButtonDisabled : {}),
+            ...(streaming || !input.trim() ? styles.sendButtonDisabled : {}),
           }}
           onClick={sendMessage}
-          disabled={loading || !input.trim()}
+          disabled={streaming || !input.trim()}
         >
           Send
         </button>
@@ -177,13 +244,18 @@ const styles: Record<string, React.CSSProperties> = {
     borderBottomLeftRadius: "4px",
     boxShadow: "0 4px 24px rgba(167, 139, 250, 0.1)",
   },
-  typing: {
-    display: "flex",
+  typingDots: {
+    display: "inline-flex",
     gap: "4px",
     alignItems: "center",
     fontSize: "20px",
     color: "#6B7280",
-    padding: "10px 16px",
+  },
+  cursor: {
+    display: "inline-block",
+    marginLeft: "1px",
+    color: "#9472B6",
+    animation: "blink 1s step-end infinite",
   },
   inputArea: {
     display: "flex",
