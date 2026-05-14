@@ -24,6 +24,7 @@ export default function Home() {
   const [streaming, setStreaming] = useState(false);
   const [mounted, setMounted] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   // Restore session from localStorage on mount
@@ -89,6 +90,10 @@ export default function Home() {
 
     setMessages((prev) => [...prev, { role: "user", content: text }]);
     setInput("");
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.overflowY = "hidden";
+    }
     setStreaming(true);
     setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
@@ -155,6 +160,15 @@ export default function Home() {
       setStreaming(false);
       abortRef.current = null;
     }
+  }
+
+  function handleTextareaChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    setInput(e.target.value);
+    const el = e.target;
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+    // only show scrollbar when content exceeds the cap
+    el.style.overflowY = el.scrollHeight > 140 ? "auto" : "hidden";
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -275,9 +289,10 @@ export default function Home() {
 
       <div style={styles.inputArea}>
         <textarea
+          ref={textareaRef}
           style={styles.textarea}
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={handleTextareaChange}
           onKeyDown={handleKeyDown}
           placeholder="Share what's on your mind… (Enter to send, Shift+Enter for new line)"
           rows={1}
@@ -484,7 +499,7 @@ const styles: Record<string, React.CSSProperties> = {
     lineHeight: "1.5",
     minHeight: "48px",
     maxHeight: "140px",
-    overflowY: "auto",
+    overflowY: "hidden",
     transition: "border-color 200ms ease",
   },
   sendButton: {
