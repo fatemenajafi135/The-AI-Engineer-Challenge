@@ -694,6 +694,8 @@ export default function Home() {
             const isUser = msg.role === "user";
             const isStreamingBubble =
               streaming && !isUser && i === messages.length - 1;
+            const hasCard = !isUser && !isStreamingBubble &&
+              !!(msg.breathingTool || msg.reframeTool || msg.prepTool || msg.supportTool);
             return (
               <div
                 key={i}
@@ -704,25 +706,37 @@ export default function Home() {
                   gap: "4px",
                 }}
               >
-                {!isUser && msg.breathingTool && !isStreamingBubble && (
-                  <BreathingWidget tool={msg.breathingTool} />
-                )}
-                {!isUser && msg.reframeTool && !isStreamingBubble && (
-                  <ReframeWidget tool={msg.reframeTool} />
-                )}
-                {!isUser && msg.prepTool && !isStreamingBubble && (
-                  <PrepWidget tool={msg.prepTool} />
-                )}
-                {!isUser && msg.supportTool && !isStreamingBubble && (
-                  <SupportWidget tool={msg.supportTool} apiKey={apiKey} />
-                )}
-                <div style={{ ...styles.messageBubble, ...(isUser ? styles.userBubble : styles.assistantBubble) }}>
+                <div style={{
+                  ...styles.messageBubble,
+                  ...(isUser ? styles.userBubble : styles.assistantBubble),
+                  ...(hasCard ? { maxWidth: "620px" } : {}),
+                }}>
                   {isStreamingBubble && msg.content === "" ? (
                     <span style={styles.typingDots}><span>●</span><span>●</span><span>●</span></span>
                   ) : (
                     <ReactMarkdown remarkPlugins={[remarkGfm]} components={md}>
                       {isStreamingBubble ? msg.content + " ▍" : msg.content}
                     </ReactMarkdown>
+                  )}
+                  {!isUser && msg.breathingTool && !isStreamingBubble && (
+                    <div style={{ marginTop: msg.content ? 10 : 0 }}>
+                      <BreathingWidget tool={msg.breathingTool} />
+                    </div>
+                  )}
+                  {!isUser && msg.reframeTool && !isStreamingBubble && (
+                    <div style={{ marginTop: msg.content ? 10 : 0 }}>
+                      <ReframeWidget tool={msg.reframeTool} />
+                    </div>
+                  )}
+                  {!isUser && msg.prepTool && !isStreamingBubble && (
+                    <div style={{ marginTop: msg.content ? 10 : 0 }}>
+                      <PrepWidget tool={msg.prepTool} />
+                    </div>
+                  )}
+                  {!isUser && msg.supportTool && !isStreamingBubble && (
+                    <div style={{ marginTop: msg.content ? 10 : 0 }}>
+                      <SupportWidget tool={msg.supportTool} apiKey={apiKey} />
+                    </div>
                   )}
                 </div>
                 {msg.timestamp && !isStreamingBubble && (
