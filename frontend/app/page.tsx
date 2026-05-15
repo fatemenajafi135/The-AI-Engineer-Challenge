@@ -4,7 +4,8 @@ import { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-type Message = { role: "user" | "assistant"; content: string; timestamp?: number };
+type Usage = { prompt_tokens: number; completion_tokens: number; total_tokens: number; cost: number | null };
+type Message = { role: "user" | "assistant"; content: string; timestamp?: number; usage?: Usage };
 type Phase = "landing" | "chat";
 
 // Styled markdown components — theme colours hardcoded so this stays outside the component
@@ -296,12 +297,23 @@ export default function Home() {
           const trimmed = line.replace(/^data: /, "").trim();
           if (!trimmed) continue;
 
-          let parsed: { token?: string; done?: boolean; error?: string };
+          let parsed: { token?: string; done?: boolean; error?: string; usage?: Usage };
           try { parsed = JSON.parse(trimmed); }
           catch { continue; }
 
           if (parsed.error) throw new Error(parsed.error);
-          if (parsed.done) { streamDone = true; break; }
+          if (parsed.done) {
+            if (parsed.usage) {
+              const usage = parsed.usage;
+              setMessages((prev) => {
+                const next = [...prev];
+                next[next.length - 1] = { ...next[next.length - 1], usage };
+                return next;
+              });
+            }
+            streamDone = true;
+            break;
+          }
           if (parsed.token) {
             const token = parsed.token;
             setMessages((prev) => {

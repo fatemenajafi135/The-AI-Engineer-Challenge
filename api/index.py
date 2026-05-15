@@ -106,6 +106,38 @@ def _is_retryable(exc: Exception) -> bool:
         return exc.status_code >= 500
     return False
 
+# ── Token pricing ─────────────────────────────────────────────────────────────
+
+# (input_per_1m_usd, output_per_1m_usd) — update as OpenAI adjusts pricing
+_MODEL_PRICING: dict[str, tuple[float, float]] = {
+    # GPT-4o family
+    "gpt-4o-mini":   (0.15, 0.60),
+    "gpt-4o":        (2.50, 10.00),
+
+    # GPT-4.1 family
+    "gpt-4.1-nano":  (0.10, 0.40),
+    "gpt-4.1-mini":  (0.40, 1.60),
+    "gpt-4.1":       (2.00, 8.00),
+
+    # Reasoning models
+    "o4-mini":       (1.10, 4.40),
+    "o3":            (10.00, 40.00),
+
+    # GPT-5 family
+    "gpt-5-nano":    (0.05, 0.40),
+    "gpt-5-mini":    (0.25, 2.00),
+    "gpt-5":         (1.25, 10.00),
+    "gpt-5-pro":     (15.00, 120.00),
+}
+
+
+def _calc_cost(model: str, prompt_tokens: int, completion_tokens: int) -> float | None:
+    pricing = _MODEL_PRICING.get(model)
+    if pricing is None:
+        return None
+    input_rate, output_rate = pricing
+    return round((prompt_tokens * input_rate + completion_tokens * output_rate) / 1_000_000, 6)
+
 # ── Prompt building ──────────────────────────────────────────────────────────
 
 BASE_PROMPT = """You are a professional mental wellness coach — warm, empathetic, and non-judgmental \
@@ -258,7 +290,16 @@ async def chat(request: ChatRequest):
             temperature=request.temperature,
             max_tokens=request.max_tokens,
         )
-        return {"reply": response.choices[0].message.content}
+        usage = response.usage
+        result: dict = {"reply": response.choices[0].message.content}
+        if usage:
+            result["usage"] = {
+                "prompt_tokens": usage.prompt_tokens,
+                "completion_tokens": usage.completion_tokens,
+                "total_tokens": usage.total_tokens,
+                "cost": _calc_cost(request.model, usage.prompt_tokens, usage.completion_tokens),
+            }
+        return result
     except HTTPException:
         raise
     except Exception as e:
@@ -294,6 +335,7 @@ async def chat_stream(request: ChatRequest):
                     model=request.model,
                     messages=messages,
                     stream=True,
+                    stream_options={"include_usage": True},
                     temperature=request.temperature,
                     max_tokens=request.max_tokens,
                 )
@@ -315,11 +357,25 @@ async def chat_stream(request: ChatRequest):
             return
 
         try:
+            usage_data = None
             async for chunk in stream:
-                delta = chunk.choices[0].delta
-                if delta.content:
-                    yield f"data: {json.dumps({'token': delta.content})}\n\n"
-            yield f"data: {json.dumps({'done': True})}\n\n"
+                # The final usage-only chunk has choices=[] — guard before indexing
+                if chunk.choices:
+                    delta = chunk.choices[0].delta
+                    if delta.content:
+                        yield f"data: {json.dumps({'token': delta.content})}\n\n"
+                if chunk.usage:
+                    usage_data = chunk.usage
+
+            done_payload: dict = {"done": True}
+            if usage_data:
+                done_payload["usage"] = {
+                    "prompt_tokens": usage_data.prompt_tokens,
+                    "completion_tokens": usage_data.completion_tokens,
+                    "total_tokens": usage_data.total_tokens,
+                    "cost": _calc_cost(request.model, usage_data.prompt_tokens, usage_data.completion_tokens),
+                }
+            yield f"data: {json.dumps(done_payload)}\n\n"
         except Exception as e:
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
