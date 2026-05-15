@@ -11,13 +11,13 @@ BREATHING_EXERCISE: dict = {
     "function": {
         "name": "breathing_exercise",
         "description": (
-            "HIGHEST PRIORITY TOOL. Call this when the user is in acute physiological distress RIGHT NOW: "
-            "panic, racing heart, shortness of breath, 'I can't calm down', shaking. "
-            "Call this even if they also mention an upcoming event — calm first, prep later. "
-            "Do NOT call for: venting, mild worry, general stress, or future events without acute distress. "
-            "NEVER write breathing instructions as text — always call this tool instead. "
-            "If the user expresses self-harm or suicidal ideation, do NOT call any tool — "
-            "surface crisis resources directly in your text reply immediately."
+            "PRIORITY 1 (highest, except self-harm — see safety override in system prompt). "
+            "Renders a guided breathing widget for an acute calming reset. "
+            "CALL when: user is in acute physiological distress RIGHT NOW "
+            "(panic, racing heart, shaking, \"I can't breathe\", \"I can't calm down\"). "
+            "Use even if they also mention an upcoming event — calm first, prep later. "
+            "DON'T call when: venting, mild worry, general stress, or future events without acute distress in this moment. "
+            "Tool content rule: never write breathing steps or counts as text — call the tool."
         ),
         "parameters": {
             "type": "object",
@@ -55,12 +55,15 @@ REFRAME_THOUGHT: dict = {
     "function": {
         "name": "reframe_thought",
         "description": (
-            "Call when the user clearly expresses a cognitive distortion "
-            "(overgeneralization, catastrophizing, mind-reading, all-or-nothing, fortune-telling, personalization, filtering). "
-            "Do NOT call when: user is acutely panicked (breathing_exercise first), "
-            "user is preparing for a specific upcoming event (prep_for_situation instead), "
+            "PRIORITY 3. "
+            "Renders a CBT-style reframe card with the original thought, the distortion type, a grounded reframe, and evidence against it. "
+            "CALL when: user clearly expresses a SINGLE cognitive distortion "
+            "(catastrophizing, overgeneralization, all-or-nothing, mind-reading, fortune-telling, personalization, filtering) "
+            "with no specific upcoming event tied to it. "
+            "DON'T call when: user is acutely panicked (breathing_exercise wins), "
+            "user is preparing for a specific upcoming event (prep_for_situation wins), "
             "distortion is mild or ambiguous, or user is already self-aware about the thought. "
-            "NEVER write a reframe card as formatted text — always call this tool instead."
+            "Tool content rule: never write reframe cards or evidence-against lists as text — call the tool."
         ),
         "parameters": {
             "type": "object",
@@ -101,15 +104,16 @@ PREP_FOR_SITUATION: dict = {
     "function": {
         "name": "prep_for_situation",
         "description": (
-            "Generate a structured prep card for a specific, time-bounded upcoming event the user wants to prepare for. "
-            "Second priority after breathing_exercise. Beats reframe_thought when both could apply. "
-            "Call when: user names a concrete event (interview, presentation, hard conversation, exam, etc.) "
-            "AND shows preparation intent ('I need to prepare', 'help me get ready', 'what should I do before'). "
-            "Do NOT call when: user is in acute panic (use breathing_exercise first), "
+            "PRIORITY 2. Beats reframe_thought when both could apply. "
+            "Renders a structured prep card for a specific, time-bounded upcoming event the user wants to prepare for. "
+            "CALL when: user names a SPECIFIC upcoming event "
+            "(interview, presentation, hard conversation, exam, medical, etc.) "
+            "AND shows preparation intent ('help me get ready', 'I need to prepare', 'what should I do before'). "
+            "DON'T call when: user is in acute panic (breathing_exercise wins), "
             "event is vague or far in the future with no urgency, "
             "or user just wants to vent about the event without preparing. "
-            "scripts field: populate ONLY when situation_type is hard_conversation — omit for all others. "
-            "NEVER write a prep card as formatted text or markdown — always call this tool instead."
+            "scripts field: populate ONLY when situation_type is hard_conversation. Omit for all other types. "
+            "Tool content rule: never write prep card sections, worry/reframe pairs, or anchor lists as text — call the tool."
         ),
         "parameters": {
             "type": "object",
@@ -171,16 +175,16 @@ FIND_PROFESSIONAL_SUPPORT: dict = {
     "function": {
         "name": "find_professional_support",
         "description": (
-            "FOURTH PRIORITY TOOL. Call ONLY when the user explicitly requests real professional human support — "
-            "a therapist, counselor, psychologist, or mental health professional. "
-            "Clear triggers: 'I need a therapist', 'coaching isn't enough', 'I want to talk to a real person', "
-            "'can you find me a professional', 'I need real help beyond coaching'. "
-            "Do NOT call for: venting (even about wanting help), user already has a therapist, "
-            "casual mention of therapy without an explicit request to find one, "
-            "acute panic (use breathing_exercise first), "
-            "self-harm or suicidal ideation (NEVER call any tool — surface crisis resources directly in text immediately). "
-            "This tool only renders a location form (Stage 1). The widget handles Stage 2 search directly. "
-            "NEVER write resource listings or therapy recommendations as text — always call this tool instead."
+            "PRIORITY 4. "
+            "Renders a location form (Stage 1); the widget then performs the search itself (Stage 2). "
+            "CALL when: user EXPLICITLY asks to find a real therapist, counselor, psychologist, or mental health professional "
+            "('I need a therapist', 'coaching isn't enough', 'I want to talk to a real person', "
+            "'can you find me someone qualified', 'I need real help beyond coaching'). "
+            "DON'T call when: venting about wanting help in general, user already has a therapist, "
+            "casual mention of therapy without an explicit request, "
+            "acute panic (breathing_exercise wins), "
+            "or any self-harm / suicidal signal (safety override in system prompt — no tool, surface crisis line in text). "
+            "Tool content rule: never write therapist names, listings, or clinic recommendations as text — call the tool."
         ),
         "parameters": {
             "type": "object",
@@ -212,32 +216,48 @@ FIND_PROFESSIONAL_SUPPORT: dict = {
 }
 
 
-ALL_TOOLS: list[dict] = [BREATHING_EXERCISE, REFRAME_THOUGHT, PREP_FOR_SITUATION, FIND_PROFESSIONAL_SUPPORT]
+ALL_TOOLS: list[dict] = [
+    BREATHING_EXERCISE,         # priority 1
+    PREP_FOR_SITUATION,         # priority 2
+    REFRAME_THOUGHT,            # priority 3
+    FIND_PROFESSIONAL_SUPPORT,  # priority 4
+]
 
 # ── System prompt addendum — appended when tools are active ───────────────────
+# Owns three things only:
+#   1. the self-harm safety override (which beats every tool),
+#   2. the priority ladder summary,
+#   3. the text-length rule when a tool is called.
+# Per-tool triggers and exclusions live in each tool's `description` field above.
 
-TOOLS_SYSTEM_ADDENDUM = (
-    "\n\nTool-calling rules — read carefully before every reply:\n\n"
-    "CRITICAL OVERRIDE: Your base instructions say to provide step-by-step guidance as text. "
-    "That rule applies ONLY when no tool is relevant. When a tool applies, you MUST call the tool — "
-    "do NOT write its content (prep card sections, reframe panels, breathing steps, resource listings) as markdown or formatted text. "
-    "Writing a prep card, reframe, breathing exercise, or professional support listing as text instead of calling the tool is wrong. "
-    "Your text reply should only briefly introduce or follow up on the tool — never replicate it.\n\n"
-    "SAFETY OVERRIDE (highest of all): If the user expresses self-harm or suicidal ideation, "
-    "do NOT call any tool. Respond with compassion and immediately surface crisis resources "
-    "(e.g. 988 Lifeline in the US, Samaritans 116 123 in the UK) directly in your text reply.\n\n"
-    "- Call AT MOST ONE tool per response. Never call two tools in one turn.\n"
-    "- Use this priority ladder when multiple tools could apply:\n\n"
-    "  1. breathing_exercise — user is in acute physiological distress RIGHT NOW "
-    "(panic, racing heart, shaking, 'I can\\'t breathe'). "
-    "Use even if they also mention an upcoming event. Calm first.\n"
-    "  2. prep_for_situation — user names a SPECIFIC upcoming event AND wants to prepare. "
-    "Use even if they also express a cognitive distortion — address the distortion in your text reply instead.\n"
-    "  3. reframe_thought — user expresses a CLEAR cognitive distortion with no specific upcoming event.\n"
-    "  4. find_professional_support — user EXPLICITLY asks to find a real therapist or professional. "
-    "Triggers: 'I need a therapist', 'coaching isn\\'t enough', 'I want to talk to someone qualified'. "
-    "Do NOT call for: venting, existing therapist, casual therapy mention, or any crisis/self-harm signal.\n"
-    "  5. Text only — venting, mild worry, self-aware thoughts, vague events, casual conversation.\n\n"
-    "When in doubt, use text. A missed tool is better than a false positive.\n"
-    "When you call a tool, write your text reply naturally — never say 'I am launching a widget'."
-)
+TOOLS_SYSTEM_ADDENDUM = """
+
+═══════════════════════════════════════════
+TOOL CALLING — read before every reply.
+═══════════════════════════════════════════
+
+1. SAFETY OVERRIDE (highest of all):
+   If the user expresses self-harm or suicidal ideation, call NO tool.
+   Respond with compassion and immediately surface a crisis line in text:
+     • 988 Suicide & Crisis Lifeline (US)
+     • Samaritans 116 123 (UK)
+     • International directory: https://findahelpline.com
+
+2. PRIORITY LADDER — call the HIGHEST matching tool, AT MOST ONE per turn:
+     #1  breathing_exercise         — acute distress RIGHT NOW
+     #2  prep_for_situation         — specific upcoming event + prep intent
+     #3  reframe_thought            — clear cognitive distortion, no event
+     #4  find_professional_support  — EXPLICIT request for a real therapist
+     #5  (no tool — text only)      — venting, mild worry, vague topics, chat
+
+3. WHEN YOU CALL A TOOL:
+   • Your text reply MUST be 1-2 short sentences — a warm intro or follow-up.
+   • NEVER write the tool's content as text (no breathing steps, no prep
+     sections, no reframes, no listings). The widget renders the content;
+     your text just frames it humanly.
+   • Don't announce the widget ('I'm launching a card') — speak naturally.
+
+4. WHEN YOU DON'T CALL A TOOL:
+   Reply normally per the coach's style. A missed tool is better than a
+   false positive — when in doubt, use text.
+"""

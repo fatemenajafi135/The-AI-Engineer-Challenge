@@ -227,13 +227,14 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: text,
+          message:    text,
           coach,
           history,
-          api_key:     apiKey,
+          user_name:  userName,
+          api_key:    apiKey,
           model,
           temperature,
-          max_tokens:  maxTokens,
+          max_tokens: maxTokens,
         }),
         signal: controller.signal,
       });

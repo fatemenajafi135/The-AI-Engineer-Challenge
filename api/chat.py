@@ -77,9 +77,14 @@ def _calc_cost(model: str, prompt_tokens: int, completion_tokens: int) -> float 
 
 # ── Prompt assembly ───────────────────────────────────────────────────────────
 
-def build_system_prompt(coach: str) -> str:
+def build_system_prompt(coach: str, user_name: str = "") -> str:
+    name_intro = (
+        f"You are speaking with {user_name.strip()}. Use their name occasionally and naturally — "
+        f"not in every reply, but when warmth or emphasis calls for it.\n\n"
+        if user_name.strip() else ""
+    )
     coach_text = COACH_PROMPTS.get(coach, COACH_PROMPTS[DEFAULT_COACH])
-    return f"{BASE_PROMPT}\n\n{coach_text}{TOOLS_SYSTEM_ADDENDUM}"
+    return f"{name_intro}{BASE_PROMPT}\n\n{coach_text}{TOOLS_SYSTEM_ADDENDUM}"
 
 
 # ── API key resolution ────────────────────────────────────────────────────────
@@ -154,7 +159,7 @@ async def chat(request: ChatRequest):
         response = OpenAI(api_key=key, max_retries=RETRY_MAX).chat.completions.create(
             model=request.model,
             messages=[
-                {"role": "system", "content": build_system_prompt(request.coach)},
+                {"role": "system", "content": build_system_prompt(request.coach, request.user_name)},
                 *history,
                 {"role": "user", "content": request.message},
             ],
@@ -194,7 +199,7 @@ async def chat_stream(request: ChatRequest):
     async def token_generator():
         history = await build_history(request.history, key)
         messages = [
-            {"role": "system", "content": build_system_prompt(request.coach)},
+            {"role": "system", "content": build_system_prompt(request.coach, request.user_name)},
             *history,
             {"role": "user", "content": request.message},
         ]

@@ -16,6 +16,7 @@ class ChatRequest(BaseModel):
     message: str
     history: list[HistoryMessage] = []
     coach: str = DEFAULT_COACH
+    user_name: str = ""  # empty = anonymous
     # Per-request overrides supplied by the frontend
     api_key: str | None = None
     model: str = DEFAULT_MODEL
