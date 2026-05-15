@@ -18,11 +18,12 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
+# Default clients — used when the request carries no api_key
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 async_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-MAX_TOKENS = 1024
-MODEL = "gpt-4o-mini"
+DEFAULT_MAX_TOKENS = 1024
+DEFAULT_MODEL = "gpt-4o-mini"
 
 # ── Prompt building ──────────────────────────────────────────────────────────
 
@@ -92,6 +93,19 @@ class ChatRequest(BaseModel):
     message: str
     history: list[HistoryMessage] = []
     coach: str = "challenger"
+    # Per-request overrides supplied by the frontend
+    api_key: str | None = None
+    model: str = DEFAULT_MODEL
+    temperature: float = 0.7
+    max_tokens: int = DEFAULT_MAX_TOKENS
+
+
+def _resolve_key(request: ChatRequest) -> str:
+    """Return the API key to use: request-level key takes priority over env var."""
+    key = (request.api_key or "").strip() or os.getenv("OPENAI_API_KEY", "")
+    if not key:
+        raise HTTPException(status_code=500, detail="No OpenAI API key provided")
+    return key
 
 
 # ── Routes ───────────────────────────────────────────────────────────────────
@@ -102,23 +116,24 @@ def root():
 
 @app.post("/api/chat")
 def chat(request: ChatRequest):
-    if not os.getenv("OPENAI_API_KEY"):
-        raise HTTPException(status_code=500, detail="OPENAI_API_KEY not configured")
-
+    key = _resolve_key(request)
     try:
         history = [{"role": m.role, "content": m.content} for m in request.history[-5:]]
-        response = client.chat.completions.create(
-            model=MODEL,
+        response = OpenAI(api_key=key).chat.completions.create(
+            model=request.model,
             messages=[
                 {"role": "system", "content": build_system_prompt(request.coach)},
                 *history,
                 {"role": "user", "content": request.message},
             ],
-            max_tokens=MAX_TOKENS,
+            temperature=request.temperature,
+            max_tokens=request.max_tokens,
         )
         return {"reply": response.choices[0].message.content}
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error calling OpenAI API: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"OpenAI error: {str(e)}")
 
 @app.post("/api/chat/stream")
 async def chat_stream(request: ChatRequest):
@@ -127,21 +142,21 @@ async def chat_stream(request: ChatRequest):
     Each event: data: {"token": "..."}\n\n
     Final event: data: {"done": true}\n\n
     """
-    if not os.getenv("OPENAI_API_KEY"):
-        raise HTTPException(status_code=500, detail="OPENAI_API_KEY not configured")
+    key = _resolve_key(request)
 
     async def token_generator():
         try:
             history = [{"role": m.role, "content": m.content} for m in request.history[-5:]]
-            stream = await async_client.chat.completions.create(
-                model=MODEL,
+            stream = await AsyncOpenAI(api_key=key).chat.completions.create(
+                model=request.model,
                 messages=[
                     {"role": "system", "content": build_system_prompt(request.coach)},
                     *history,
                     {"role": "user", "content": request.message},
                 ],
                 stream=True,
-                max_tokens=MAX_TOKENS,
+                temperature=request.temperature,
+                max_tokens=request.max_tokens,
             )
             async for chunk in stream:
                 delta = chunk.choices[0].delta
