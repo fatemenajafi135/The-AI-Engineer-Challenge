@@ -189,6 +189,52 @@ def _resolve_key(request: ChatRequest) -> str:
     return key
 
 
+# ── Sliding-window history with summarization ────────────────────────────────
+
+_HISTORY_WINDOW = 16  # recent messages kept verbatim (= 8 user/assistant exchanges)
+
+_SUMMARY_SYSTEM = (
+    "Summarize the conversation below in 3-4 sentences. "
+    "Cover: the user's main concern, what was explored, and any insights or commitments reached. "
+    "Write in third person ('The user...'). Be concise — this will be used as context to continue the session."
+)
+
+
+async def _build_history(raw: list[HistoryMessage], api_key: str) -> list[dict]:
+    """
+    Sliding-window history builder.
+    - If total messages fit within _HISTORY_WINDOW, return them all as-is.
+    - Otherwise, summarize the older portion and prepend the summary as a system note
+      so the model has full session context without ballooning the prompt.
+    Falls back to the bare window slice if the summarization call fails.
+    """
+    msgs = [{"role": m.role, "content": m.content} for m in raw]
+    if len(msgs) <= _HISTORY_WINDOW:
+        return msgs
+
+    old, recent = msgs[:-_HISTORY_WINDOW], msgs[-_HISTORY_WINDOW:]
+    transcript = "\n".join(f"{m['role'].capitalize()}: {m['content']}" for m in old)
+
+    try:
+        resp = await AsyncOpenAI(api_key=api_key, max_retries=0).chat.completions.create(
+            model="gpt-4o-mini",  # always use the cheap/fast model for summaries
+            messages=[
+                {"role": "system", "content": _SUMMARY_SYSTEM},
+                {"role": "user", "content": transcript},
+            ],
+            temperature=0.3,
+            max_tokens=150,
+        )
+        summary = resp.choices[0].message.content.strip()
+        return [
+            {"role": "system", "content": f"[Earlier in this session]: {summary}"},
+            *recent,
+        ]
+    except Exception:
+        logger.warning("History summarization failed; falling back to recent window only.")
+        return recent
+
+
 # ── Routes ───────────────────────────────────────────────────────────────────
 
 @app.get("/")
@@ -196,11 +242,11 @@ def root():
     return {"status": "ok"}
 
 @app.post("/api/chat")
-def chat(request: ChatRequest):
+async def chat(request: ChatRequest):
     _validate_message(request.message)
     key = _resolve_key(request)
     try:
-        history = [{"role": m.role, "content": m.content} for m in request.history[-5:]]
+        history = await _build_history(request.history, key)
         # max_retries lets the SDK handle rate-limit and 5xx backoff automatically
         response = OpenAI(api_key=key, max_retries=_RETRY_MAX).chat.completions.create(
             model=request.model,
@@ -229,7 +275,7 @@ async def chat_stream(request: ChatRequest):
     key = _resolve_key(request)
 
     async def token_generator():
-        history = [{"role": m.role, "content": m.content} for m in request.history[-5:]]
+        history = await _build_history(request.history, key)
         messages = [
             {"role": "system", "content": build_system_prompt(request.coach)},
             *history,
