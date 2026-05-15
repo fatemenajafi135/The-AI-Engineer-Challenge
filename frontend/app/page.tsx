@@ -74,10 +74,10 @@ export default function Home() {
     if (savedCoach)        setCoach(savedCoach);
     if (savedApiKey)       setApiKey(savedApiKey);
     if (savedModel)        setModel(savedModel);
-    if (savedTemperature)  setTemperature(parseFloat(savedTemperature));
-    if (savedMaxTokens)    setMaxTokens(parseInt(savedMaxTokens));
-    if (savedLimit)        setMessageLimit(parseInt(savedLimit));
-    if (savedSessionStart) setSessionStart(parseInt(savedSessionStart));
+    if (savedTemperature)  { const v = parseFloat(savedTemperature);  if (!isNaN(v)) setTemperature(v); }
+    if (savedMaxTokens)    { const v = parseInt(savedMaxTokens);    if (!isNaN(v)) setMaxTokens(v); }
+    if (savedLimit)        { const v = parseInt(savedLimit);        if (!isNaN(v)) setMessageLimit(v); }
+    if (savedSessionStart) { const v = parseInt(savedSessionStart); if (!isNaN(v)) setSessionStart(v); }
 
     if (savedName) {
       setUserName(savedName);
@@ -337,6 +337,23 @@ export default function Home() {
             });
           }
         }
+      }
+
+      // Detect connection dropped before the server sent {"done": true}
+      if (!streamDone) {
+        setMessages((prev) => {
+          const next = [...prev];
+          const last = next[next.length - 1];
+          if (last.role === "assistant") {
+            next[next.length - 1] = {
+              ...last,
+              content: last.content
+                ? last.content + "\n\n*(Response interrupted — connection dropped. Try again.)*"
+                : "*(Response interrupted — connection dropped. Try again.)*",
+            };
+          }
+          return next;
+        });
       }
     } catch (err) {
       if ((err as Error).name === "AbortError") return;

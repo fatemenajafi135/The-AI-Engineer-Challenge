@@ -245,6 +245,7 @@ async def chat_stream(request: ChatRequest):
                 if chunk.usage:
                     usage_data = chunk.usage
         except Exception as e:
+            logger.error("Phase 1 stream error: %s", e, exc_info=True)
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
             return
 
@@ -257,6 +258,7 @@ async def chat_stream(request: ChatRequest):
                 try:
                     args = json.loads(tc["arguments"])
                 except Exception:
+                    logger.warning("Tool arg JSON parse failed for %s — using empty args", tc["name"])
                     args = {}
                 yield f"data: {json.dumps({'tool_call': {'name': tc['name'], 'args': args}})}\n\n"
 
@@ -306,6 +308,7 @@ async def chat_stream(request: ChatRequest):
                     if chunk.usage:
                         usage_data = chunk.usage  # overwrite with Phase 2 usage
             except Exception as e:
+                logger.error("Phase 2 stream error: %s", e, exc_info=True)
                 yield f"data: {json.dumps({'error': str(e)})}\n\n"
                 return
 

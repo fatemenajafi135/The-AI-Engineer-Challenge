@@ -56,18 +56,22 @@ def _build_query(req: SupportSearchRequest) -> str:
 async def _search_web(client: AsyncOpenAI, query: str) -> str:
     """Search the web using OpenAI's built-in web_search_preview tool.
     Returns the model's text answer (which contains cited listings)."""
-    response = await client.responses.create(
-        model="gpt-4o-mini",
-        tools=[{"type": "web_search_preview"}],
-        input=f"Find real licensed therapists or mental health centers for: {query}. "
-              f"Include their name, specialty, whether they offer in-person or online, and their website URL.",
-    )
-    for item in response.output:
-        if getattr(item, "type", None) == "message":
-            for block in item.content:
-                if getattr(block, "type", None) == "output_text":
-                    return block.text
-    return ""
+    try:
+        response = await client.responses.create(
+            model="gpt-4o-mini",
+            tools=[{"type": "web_search_preview"}],
+            input=f"Find real licensed therapists or mental health centers for: {query}. "
+                  f"Include their name, specialty, whether they offer in-person or online, and their website URL.",
+        )
+        for item in response.output:
+            if getattr(item, "type", None) == "message":
+                for block in item.content:
+                    if getattr(block, "type", None) == "output_text":
+                        return block.text
+        return ""
+    except Exception as e:
+        logger.error("Web search failed: %s", e, exc_info=True)
+        raise RuntimeError(f"Web search unavailable: {e}") from e
 
 
 # ── Structured extraction ─────────────────────────────────────────────────────

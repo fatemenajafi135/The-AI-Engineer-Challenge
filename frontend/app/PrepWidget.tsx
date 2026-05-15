@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { styles } from "./styles";
+import { COLORS } from "../config";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -47,7 +48,9 @@ export function PrepWidget({ tool }: { tool: PrepTool }) {
   const [checkedAnchors, setCheckedAnchors] = useState<number[]>([]);
   const [activeScriptTab, setActiveScriptTab] = useState(0);
   const [saved, setSaved] = useState(false);
+  const [saveFailed, setSaveFailed] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
 
   const hasScripts = tool.scripts && tool.scripts.length > 0;
 
@@ -58,19 +61,23 @@ export function PrepWidget({ tool }: { tool: PrepTool }) {
   }
 
   function savePrep() {
-    const existing = JSON.parse(localStorage.getItem("mental_coach_preps") ?? "[]");
-    existing.push({ ...tool, savedAt: Date.now() });
-    localStorage.setItem("mental_coach_preps", JSON.stringify(existing));
-    setSaved(true);
+    try {
+      const existing = JSON.parse(localStorage.getItem("mental_coach_preps") ?? "[]");
+      existing.push({ ...tool, savedAt: Date.now() });
+      localStorage.setItem("mental_coach_preps", JSON.stringify(existing));
+      setSaved(true);
+    } catch {
+      setSaveFailed(true);
+      setTimeout(() => setSaveFailed(false), 3000);
+    }
   }
 
   function copyScript() {
     const script = tool.scripts?.[activeScriptTab];
     if (!script) return;
-    navigator.clipboard.writeText(script.text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
+    navigator.clipboard.writeText(script.text)
+      .then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); })
+      .catch(() => { setCopyFailed(true); setTimeout(() => setCopyFailed(false), 2000); });
   }
 
   return (
@@ -148,7 +155,7 @@ export function PrepWidget({ tool }: { tool: PrepTool }) {
               {tool.scripts![activeScriptTab].text}
             </p>
             <button style={styles.prepCopyBtn} onClick={copyScript}>
-              {copied ? "Copied!" : "Copy"}
+              {copied ? "Copied!" : copyFailed ? "Failed" : "Copy"}
             </button>
           </div>
         </div>
@@ -156,6 +163,11 @@ export function PrepWidget({ tool }: { tool: PrepTool }) {
 
       {/* Footer — save button */}
       <div style={styles.prepFooter}>
+        {saveFailed && (
+          <span style={{ fontSize: 12, color: COLORS.warningText, marginRight: 10 }}>
+            Save failed
+          </span>
+        )}
         <button
           style={saved ? styles.prepSavedBtn : styles.prepSaveBtn}
           onClick={savePrep}

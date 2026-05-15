@@ -42,6 +42,9 @@ async def build_history(raw: list[HistoryMessage], api_key: str) -> list[dict]:
             {"role": "system", "content": f"[Earlier in this session]: {summary}"},
             *recent,
         ]
-    except Exception:
-        logger.warning("History summarization failed; falling back to recent window only.")
+    except Exception as exc:
+        logger.warning(
+            "History summarization failed (%s): %s; falling back to recent window only.",
+            type(exc).__name__, exc, exc_info=True,
+        )
         return recent
