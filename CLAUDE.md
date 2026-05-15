@@ -79,3 +79,7 @@
 - After any refactor, leave a short summary comment at the top of the changed file explaining what was moved and why
 - Keep one config file per layer (one for frontend, one for backend) — do not create multiple scattered config files
 - When in doubt, duplication between frontend and backend is acceptable — overengineering a shared config is not worth it at this scale
+- A single file must not contain the entire project. Split by responsibility — routes, helpers, and models should not all live in the same file unless the project is trivially small.
+- Do not over-split either. A new file is justified when a block of code has a clear, distinct responsibility and would make the original file noticeably cleaner.
+- When splitting files, group by what the code *does*, not what it *is* — prefer `chat.py` over `helpers.py`.
+- After splitting, the entry point (e.g. `api/index.py`) should read like a table of contents — imports and wiring only, no business logic inline.
