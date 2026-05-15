@@ -3,6 +3,17 @@
 import { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import {
+  CHAT_STREAM_ENDPOINT,
+  COACH_OPTIONS,
+  MODEL_OPTIONS,
+  DEFAULT_MODEL,
+  DEFAULT_TEMPERATURE,
+  DEFAULT_MAX_TOKENS,
+  DEFAULT_MESSAGE_LIMIT,
+  DEFAULT_COACH,
+  LS_KEYS,
+} from "../config";
 
 type Usage = { prompt_tokens: number; completion_tokens: number; total_tokens: number; cost: number | null };
 type Message = { role: "user" | "assistant"; content: string; timestamp?: number; usage?: Usage };
@@ -34,59 +45,11 @@ const md: React.ComponentProps<typeof ReactMarkdown>["components"] = {
   h3: ({ children }) => <h3 style={{ fontSize: "15px", fontWeight: 600, margin: "6px 0 4px 0", color: "#FFFFFF" }}>{children}</h3>,
 };
 
-const COACH_OPTIONS = [
-  { value: "fixer",       name: "The Fixer",       tagline: "Cuts through the noise, finds the block, hands you the next step." },
-  { value: "hype",        name: "The Hype Man",    tagline: "Your most embarrassingly loyal fan — makes progress feel electric." },
-  { value: "anchor",      name: "The Anchor",      tagline: "Calm when you're not, steady when everything feels like chaos." },
-  { value: "challenger",  name: "The Challenger",  tagline: "Won't let you off the hook — friendly but ruthless about excuses." },
-  { value: "wingman",     name: "The Wingman",     tagline: "Casual and warm, like a smart friend who actually listens." },
-  { value: "philosopher", name: "The Philosopher", tagline: "Zooms out when you're too deep in your own head." },
-];
-
-const MODEL_OPTIONS = [
-  {
-    value: "gpt-4o-mini",
-    label: "gpt-4o-mini — ultra fast & affordable"
-  },
-  {
-    value: "gpt-4.1-mini",
-    label: "gpt-4.1-mini — efficient & reliable"
-  },
-  {
-    value: "gpt-4.1",
-    label: "gpt-4.1 — strong general-purpose model"
-  },
-  {
-    value: "gpt-4.1-nano",
-    label: "gpt-4.1-nano — cheapest low-latency model"
-  },
-  {
-    value: "o3",
-    label: "o3 — advanced reasoning & emotional nuance"
-  },
-  {
-    value: "o4-mini",
-    label: "o4-mini — lightweight reasoning model"
-  },
-  {
-    value: "gpt-5.4-mini",
-    label: "gpt-5.4-mini — very fast & capable"
-  },
-  {
-    value: "gpt-5.4",
-    label: "gpt-5.4 — strong general intelligence"
-  },
-  {
-    value: "gpt-5.5",
-    label: "gpt-5.5 — most advanced thinking model"
-  }
-];
-
 
 export default function Home() {
   const [phase, setPhase] = useState<Phase>("landing");
   const [userName, setUserName] = useState("");
-  const [coach, setCoach] = useState("challenger");
+  const [coach, setCoach] = useState(DEFAULT_COACH);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -97,10 +60,10 @@ export default function Home() {
   const [apiKey, setApiKey] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [model, setModel] = useState("gpt-4o-mini");
-  const [temperature, setTemperature] = useState(0.7);
-  const [maxTokens, setMaxTokens] = useState(1024);
-  const [messageLimit, setMessageLimit] = useState(20);
+  const [model, setModel] = useState(DEFAULT_MODEL);
+  const [temperature, setTemperature] = useState(DEFAULT_TEMPERATURE);
+  const [maxTokens, setMaxTokens] = useState(DEFAULT_MAX_TOKENS);
+  const [messageLimit, setMessageLimit] = useState(DEFAULT_MESSAGE_LIMIT);
 
   // Warning state: holds the pending message text when limit is reached
   const [limitWarning, setLimitWarning] = useState<string | null>(null);
@@ -115,15 +78,15 @@ export default function Home() {
 
   // Restore full session from localStorage on mount
   useEffect(() => {
-    const savedName        = localStorage.getItem("mc_userName");
-    const savedCoach        = localStorage.getItem("mc_coach");
-    const savedMessages     = localStorage.getItem("mc_messages");
-    const savedApiKey       = localStorage.getItem("mc_apiKey");
-    const savedModel        = localStorage.getItem("mc_model");
-    const savedTemperature  = localStorage.getItem("mc_temperature");
-    const savedMaxTokens    = localStorage.getItem("mc_maxTokens");
-    const savedLimit        = localStorage.getItem("mc_messageLimit");
-    const savedSessionStart = localStorage.getItem("mc_sessionStart");
+    const savedName        = localStorage.getItem(LS_KEYS.userName);
+    const savedCoach        = localStorage.getItem(LS_KEYS.coach);
+    const savedMessages     = localStorage.getItem(LS_KEYS.messages);
+    const savedApiKey       = localStorage.getItem(LS_KEYS.apiKey);
+    const savedModel        = localStorage.getItem(LS_KEYS.model);
+    const savedTemperature  = localStorage.getItem(LS_KEYS.temperature);
+    const savedMaxTokens    = localStorage.getItem(LS_KEYS.maxTokens);
+    const savedLimit        = localStorage.getItem(LS_KEYS.messageLimit);
+    const savedSessionStart = localStorage.getItem(LS_KEYS.sessionStart);
 
     if (savedCoach)        setCoach(savedCoach);
     if (savedApiKey)       setApiKey(savedApiKey);
@@ -150,7 +113,7 @@ export default function Home() {
   // Persist message history on every update
   useEffect(() => {
     if (messages.length > 0) {
-      localStorage.setItem("mc_messages", JSON.stringify(messages));
+      localStorage.setItem(LS_KEYS.messages, JSON.stringify(messages));
     }
   }, [messages]);
 
@@ -186,16 +149,16 @@ export default function Home() {
     const key  = apiKey.trim();
     if (!name || !key) return;
 
-    localStorage.setItem("mc_userName",     name);
-    localStorage.setItem("mc_coach",        coach);
-    localStorage.setItem("mc_apiKey",       key);
-    localStorage.setItem("mc_model",        model);
-    localStorage.setItem("mc_temperature",  String(temperature));
-    localStorage.setItem("mc_maxTokens",    String(maxTokens));
-    localStorage.setItem("mc_messageLimit", String(messageLimit));
+    localStorage.setItem(LS_KEYS.userName,     name);
+    localStorage.setItem(LS_KEYS.coach,        coach);
+    localStorage.setItem(LS_KEYS.apiKey,       key);
+    localStorage.setItem(LS_KEYS.model,        model);
+    localStorage.setItem(LS_KEYS.temperature,  String(temperature));
+    localStorage.setItem(LS_KEYS.maxTokens,    String(maxTokens));
+    localStorage.setItem(LS_KEYS.messageLimit, String(messageLimit));
 
     const now = Date.now();
-    localStorage.setItem("mc_sessionStart", String(now));
+    localStorage.setItem(LS_KEYS.sessionStart, String(now));
     setSessionStart(now);
 
     setMessages([{
@@ -207,18 +170,14 @@ export default function Home() {
   }
 
   function clearSession() {
-    [
-      "mc_userName", "mc_coach", "mc_messages", "mc_tone", "mc_persona",
-      "mc_apiKey", "mc_model", "mc_temperature", "mc_maxTokens", "mc_messageLimit",
-      "mc_sessionStart",
-    ].forEach((k) => localStorage.removeItem(k));
+    Object.values(LS_KEYS).forEach((k) => localStorage.removeItem(k));
     setUserName("");
-    setCoach("challenger");
+    setCoach(DEFAULT_COACH);
     setApiKey("");
-    setModel("gpt-4o-mini");
-    setTemperature(0.7);
-    setMaxTokens(1024);
-    setMessageLimit(20);
+    setModel(DEFAULT_MODEL);
+    setTemperature(DEFAULT_TEMPERATURE);
+    setMaxTokens(DEFAULT_MAX_TOKENS);
+    setMessageLimit(DEFAULT_MESSAGE_LIMIT);
     setLimitWarning(null);
     setSessionStart(null);
     setShowInfoPanel(false);
@@ -270,7 +229,7 @@ export default function Home() {
     abortRef.current = controller;
 
     try {
-      const res = await fetch("/api/chat/stream", {
+      const res = await fetch(CHAT_STREAM_ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
