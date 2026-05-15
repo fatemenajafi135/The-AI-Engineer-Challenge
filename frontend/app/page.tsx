@@ -86,7 +86,7 @@ export default function Home() {
           setMessages(JSON.parse(savedMessages));
           setPhase("chat");
         } catch {
-          // corrupted storage — start fresh
+          console.warn("localStorage message history corrupted — starting fresh");
         }
       }
     }
@@ -263,9 +263,13 @@ export default function Home() {
 
           let parsed: { token?: string; done?: boolean; error?: string; usage?: Usage; tool_call?: { name: string; args: unknown } };
           try { parsed = JSON.parse(trimmed); }
-          catch { continue; }
+          catch { console.error("Failed to parse SSE event:", trimmed); continue; }
 
           if (parsed.error) throw new Error(parsed.error);
+
+          if (parsed.tool_call) {
+            console.log("Tool call received:", parsed.tool_call.name);
+          }
 
           if (parsed.tool_call?.name === "breathing_exercise") {
             const tool = parsed.tool_call.args as BreathingTool;
@@ -357,6 +361,7 @@ export default function Home() {
       }
     } catch (err) {
       if ((err as Error).name === "AbortError") return;
+      console.error("Chat stream error:", err);
       const errMsg = (err as Error).message || "Sorry, something went wrong. Please try again.";
       setMessages((prev) => {
         const next = [...prev];

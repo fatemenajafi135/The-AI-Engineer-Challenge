@@ -201,6 +201,11 @@ async def chat_stream(request: ChatRequest):
 
         aclient = AsyncOpenAI(api_key=key, max_retries=0)  # retries managed by _open_stream
 
+        logger.info(
+            "Stream request — model=%s coach=%s msg_len=%d history=%d",
+            request.model, request.coach, len(request.message), len(request.history),
+        )
+
         # ── Phase 1: call with tools ──────────────────────────────────────────
         stream = await _open_stream(
             aclient,
@@ -261,6 +266,7 @@ async def chat_stream(request: ChatRequest):
                     logger.warning("Tool arg JSON parse failed for %s — using empty args", tc["name"])
                     args = {}
                 yield f"data: {json.dumps({'tool_call': {'name': tc['name'], 'args': args}})}\n\n"
+                logger.info("Tool called: %s", tc["name"])
 
             # Reconstruct the assistant's tool_calls message for the follow-up call
             tool_call_list = [
@@ -315,6 +321,10 @@ async def chat_stream(request: ChatRequest):
         # ── Final done event ──────────────────────────────────────────────────
         done_payload: dict = {"done": True}
         if usage_data:
+            logger.info(
+                "Stream complete — prompt=%d completion=%d total=%d",
+                usage_data.prompt_tokens, usage_data.completion_tokens, usage_data.total_tokens,
+            )
             done_payload["usage"] = {
                 "prompt_tokens": usage_data.prompt_tokens,
                 "completion_tokens": usage_data.completion_tokens,

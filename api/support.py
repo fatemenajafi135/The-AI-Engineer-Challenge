@@ -106,7 +106,7 @@ async def _extract_results(client: AsyncOpenAI, raw_text: str) -> list[dict]:
         data = json.loads(extraction.choices[0].message.content or "{}")
         return data.get("results", [])
     except Exception as e:
-        logger.warning("Result extraction failed: %s", e)
+        logger.warning("Result extraction failed: %s", e, exc_info=True)
         return []
 
 
@@ -121,6 +121,11 @@ async def support_search(req: SupportSearchRequest):
     aclient = AsyncOpenAI(api_key=key)
     query   = _build_query(req)
 
+    logger.info(
+        "Support search — country=%s city=%s concern=%s format=%s",
+        req.country, req.city, req.concern_type, req.format_preference,
+    )
+
     try:
         raw_text = await _search_web(aclient, query)
         results  = await _extract_results(aclient, raw_text)
@@ -128,6 +133,7 @@ async def support_search(req: SupportSearchRequest):
         logger.error("Support search failed: %s", e)
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
 
+    logger.info("Support search returned %d results", len(results))
     return {
         "results": results,
         "crisis":  get_crisis_resource(req.country),

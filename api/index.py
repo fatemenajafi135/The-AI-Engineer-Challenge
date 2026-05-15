@@ -9,6 +9,9 @@
 #   support.py — professional support search route (/api/support/search)
 # ─────────────────────────────────────────────────────────────────────────────
 
+import logging
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
@@ -18,7 +21,22 @@ from .support import router as support_router
 
 load_dotenv()
 
-app = FastAPI()
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    logger.info("Mental Coach API starting up")
+    yield
+    logger.info("Mental Coach API shutting down")
+
+
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
