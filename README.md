@@ -680,7 +680,7 @@ Then rerun your vibe check and document:
 
 ---
 
-### **Adjustments Made:**
+### **Adjustments Made:** *v0.2.0*
 
 Basically rebuilt the whole experience from the ground up. Here's what landed in v0.2.0:
 
@@ -702,7 +702,7 @@ Per-message token tracking with estimated cost, rolled into a live session total
 **🛡️ Less fragile under the hood**: 
 Retry with exponential backoff on transient API errors, prompt injection guards on the backend, and actual error messages in the UI instead of silent failures. 
 
-### **Results:** *v0.2.0*
+### **Results:** 
 
 Three real pain points from the vibe check are gone:
 
@@ -718,6 +718,43 @@ Still open:
 - No knowledge base — everything comes from training data and what you share in the chat
 
 Continuity is kind of the whole point of a coaching tool, so these gaps matter. They're on the roadmap. ✈️
+
+---
+
+### **Adjustments Made:** *v0.3.0*
+
+v0.3.0 is about giving the coach hands. Instead of just talking, it can now *do things* — render interactive widgets, run structured exercises, and connect you to real professionals. The backbone is OpenAI function/tool calling: the model decides when a structured action fits better than text, and the frontend renders the result as a rich UI card instead of a wall of prose.
+
+**🧰 Four tools, four situations**:
+
+- **Breathing widget** — when you're in acute panic right now, the coach doesn't just say "try to breathe." It launches an animated guided exercise with the right technique (box, physiological sigh, or 4-7-8) and cycle count for your specific level of distress.
+
+- **Thought reframe card** — when you're catastrophizing, overgeneralizing, or stuck in all-or-nothing thinking, the coach renders a CBT-style card: your original thought, the distortion type, a grounded reframe, and the evidence against the distortion — all structured, not a text wall.
+
+- **Situation prep card** — job interview tomorrow? Hard conversation you're dreading? The coach builds a tailored prep card: specific worries paired with reframes, grounding anchors for before the event, and (for hard conversations) actual word-for-word scripts in direct, gentle, or written tones.
+
+- **Professional support finder** — when coaching isn't enough and you ask explicitly, the coach surfaces a location form. It infers your primary concern and format preference from the conversation, then searches for real therapists near you. No hallucinated listings.
+
+**⚡ Smart trigger logic**:
+Tools have a priority ladder — acute distress beats event prep beats thought reframes beats therapist search. The model never calls more than one per turn, and never calls a tool when plain conversation fits better. A missed tool is better than a false positive.
+
+**🛡️ Safety override hardcoded above everything**:
+Self-harm or suicidal language bypasses all tools entirely. The coach responds with compassion and surfaces crisis lines (988, Samaritans, findahelpline.com) as plain text — no widget, no delay.
+
+### **Results:** *v0.3.0*
+
+From the v0.2.0 "still open" list, here's what changed:
+
+- **No calendar access or action execution** — ✅ partially closed. The coach can now execute structured actions (exercises, cards, searches) triggered by context. A `create_reminder` or `add_to_calendar` tool would be the natural next step and is now a straightforward addition to the existing tool framework.
+- **Responses felt generic for serious moments** — ✅ gone. Panic now gets an animated breathing widget. Cognitive distortions get a named, structured reframe. Prep sessions get a card with actual scripts. These aren't cosmetic — they're meaningfully different from a text response.
+- **No path to real help** — ✅ closed. The therapist finder bridges the gap between AI coaching and professional care, which is exactly where a responsible wellness tool needs a door.
+
+Still open (and now more solvable with the tool architecture in place):
+- No web search / real-time data — a `search_web` tool would slot right in
+- No cross-session memory — a `save_insight` + `recall_session` tool pair could handle this without changing the rest of the stack
+- No knowledge base — tools could query a curated resource library instead of relying purely on training data
+
+The tool framework turned a chatbot into something that acts. The remaining gaps are no longer architectural problems — they're just the next tools to write. 🔧
 
 ---
 
