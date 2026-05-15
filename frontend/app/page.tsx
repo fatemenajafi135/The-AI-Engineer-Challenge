@@ -51,6 +51,7 @@ export default function Home() {
   const [limitWarning, setLimitWarning] = useState<string | null>(null);
 
   const [showInfoPanel, setShowInfoPanel] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
   const [sessionStart, setSessionStart] = useState<number | null>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -58,6 +59,7 @@ export default function Home() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const infoPanelRef = useRef<HTMLDivElement>(null);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
 
   // Restore full session from localStorage on mount
   useEffect(() => {
@@ -132,6 +134,315 @@ export default function Home() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showInfoPanel]);
+
+  useEffect(() => {
+    if (!showExportMenu) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setShowExportMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showExportMenu]);
+
+  function exportSession(format: "json" | "md" | "html") {
+    const date    = new Date();
+    const dateStr = date.toISOString().split("T")[0];
+    const name    = COACH_OPTIONS.find((o) => o.value === coach)?.name ?? "Coach";
+
+    // ── Breathing technique phase summaries (mirrors BreathingWidget constants) ──
+    const BREATHING_NAMES: Record<string, string> = {
+      box:                "Box Breathing",
+      physiological_sigh: "Physiological Sigh",
+      "4-7-8":            "4-7-8 Breathing",
+    };
+    const BREATHING_PHASES: Record<string, string> = {
+      box:                "Inhale 4s · Hold 4s · Exhale 4s · Hold 4s",
+      physiological_sigh: "Inhale 2s · Double-inhale 1s · Exhale 6s",
+      "4-7-8":            "Inhale 4s · Hold 7s · Exhale 8s",
+    };
+
+    // ── JSON card serializer ───────────────────────────────────────────────────
+    function cardToJson(m: Message) {
+      if (m.breathingTool) {
+        const t = m.breathingTool;
+        return {
+          type:           "breathing",
+          technique:      t.technique,
+          technique_name: BREATHING_NAMES[t.technique],
+          phases:         BREATHING_PHASES[t.technique],
+          cycles:         t.cycles,
+          reason:         t.reason,
+        };
+      }
+      if (m.reframeTool) {
+        const r = m.reframeTool;
+        return {
+          type:             "reframe",
+          original_thought: r.original_thought,
+          reframe:          r.reframe,
+        };
+      }
+      if (m.prepTool) {
+        const p = m.prepTool;
+        return {
+          type:                "prep",
+          event:               p.event_description,
+          worries_and_reframes: p.worries.map((w, i) => ({ worry: w, reframe: p.reframes[i] ?? "" })),
+          anchors:             p.anchors,
+        };
+      }
+      if (m.supportTool && m.supportResults) {
+        const sr = m.supportResults;
+        return {
+          type:    "support",
+          query:   sr.query,
+          crisis:  sr.crisis,
+          results: sr.results,
+        };
+      }
+      return undefined;
+    }
+
+    // ── Markdown card serializer ───────────────────────────────────────────────
+    function cardToMd(m: Message): string {
+      if (m.breathingTool) {
+        const t = m.breathingTool;
+        return [
+          ``,
+          `> 🌬 **Breathing exercise — ${BREATHING_NAMES[t.technique]}** (${t.cycles} cycles)`,
+          `> Phases: ${BREATHING_PHASES[t.technique]}`,
+          `> _${t.reason}_`,
+        ].join("\n");
+      }
+      if (m.reframeTool) {
+        const r = m.reframeTool;
+        return [
+          ``,
+          `> 🔄 **Thought reframe**`,
+          `> **Original:** ${r.original_thought}`,
+          `> **Reframe:** ${r.reframe}`,
+        ].join("\n");
+      }
+      if (m.prepTool) {
+        const p = m.prepTool;
+        const pairs   = p.worries.map((w, i) => `> - ❓ ${w}  →  ✅ ${p.reframes[i] ?? ""}`).join("\n");
+        const anchors = p.anchors.map((a) => `> - ${a}`).join("\n");
+        return [
+          ``,
+          `> 📋 **Prep — ${p.event_description}**`,
+          `> **Worries & reframes:**`,
+          pairs,
+          `> **To-do anchors:**`,
+          anchors,
+        ].join("\n");
+      }
+      if (m.supportTool && m.supportResults) {
+        const sr     = m.supportResults;
+        const crisis = sr.crisis
+          ? `> 🆘 **Crisis line:** ${sr.crisis.name}` +
+            (sr.crisis.number ? ` — ${sr.crisis.number}` : "") +
+            (sr.crisis.url    ? ` — ${sr.crisis.url}`    : "")
+          : "";
+        const results = sr.results.map((r) =>
+          `> - **${r.name}** (${r.type}, ${r.format})\n>   ${r.description}\n>   ${r.url}`
+        ).join("\n");
+        return [
+          ``,
+          `> 🔍 **Support search — ${sr.query.city}, ${sr.query.country}**`,
+          crisis,
+          results,
+        ].filter(Boolean).join("\n");
+      }
+      return "";
+    }
+
+    // ── HTML card serializer ───────────────────────────────────────────────────
+    function cardToHtml(m: Message): string {
+      const card = (emoji: string, title: string, rows: string) =>
+        `<div style="margin-top:10px;background:#26152D;border:1px solid #483550;border-radius:12px;padding:14px 16px;font-size:13px;line-height:1.6;">` +
+        `<div style="font-size:11px;font-weight:700;color:#9472B6;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">${emoji} ${title}</div>` +
+        rows +
+        `</div>`;
+      const row = (label: string, value: string) =>
+        `<div style="margin-bottom:6px;"><span style="color:#6B7280;">${label}:</span> ${value}</div>`;
+
+      if (m.breathingTool) {
+        const t = m.breathingTool;
+        return card("🌬", `Breathing — ${BREATHING_NAMES[t.technique]}`,
+          row("Phases", BREATHING_PHASES[t.technique]) +
+          row("Cycles", String(t.cycles)) +
+          row("Why", `<em>${t.reason}</em>`)
+        );
+      }
+      if (m.reframeTool) {
+        const r = m.reframeTool;
+        return card("🔄", "Thought Reframe",
+          row("Original", `<em style="color:#9B9B9B;">${r.original_thought}</em>`) +
+          row("Reframe",  `<strong>${r.reframe}</strong>`)
+        );
+      }
+      if (m.prepTool) {
+        const p      = m.prepTool;
+        const pairs  = p.worries.map((w, i) =>
+          `<li style="margin-bottom:4px;"><span style="color:#6B7280;">${w}</span>` +
+          ` <span style="color:#9472B6;">→</span> ${p.reframes[i] ?? ""}</li>`
+        ).join("");
+        const anchors = p.anchors.map((a) =>
+          `<li style="margin-bottom:4px;">${a}</li>`
+        ).join("");
+        return card("📋", `Prep — ${p.event_description}`,
+          `<div style="margin-bottom:6px;color:#6B7280;font-weight:600;">Worries &amp; Reframes:</div>` +
+          `<ul style="padding-left:16px;margin-bottom:10px;">${pairs}</ul>` +
+          `<div style="margin-bottom:6px;color:#6B7280;font-weight:600;">To-do anchors:</div>` +
+          `<ul style="padding-left:16px;">${anchors}</ul>`
+        );
+      }
+      if (m.supportTool && m.supportResults) {
+        const sr      = m.supportResults;
+        const crisis  = sr.crisis
+          ? `<div style="margin-bottom:10px;padding:8px 12px;background:rgba(148,114,182,.08);border-radius:8px;">` +
+            `<span style="color:#9472B6;font-weight:700;">🆘 Crisis:</span> ${sr.crisis.name}` +
+            (sr.crisis.number ? ` — <strong>${sr.crisis.number}</strong>` : "") +
+            (sr.crisis.url    ? ` — <a href="${sr.crisis.url}" style="color:#9472B6;">${sr.crisis.url}</a>` : "") +
+            `</div>`
+          : "";
+        const results = sr.results.map((r) =>
+          `<div style="margin-bottom:10px;padding:8px 12px;border:1px solid #483550;border-radius:8px;">` +
+          `<div style="font-weight:700;">${r.name}</div>` +
+          `<div style="font-size:12px;color:#6B7280;margin:2px 0;">${r.type} · ${r.format}</div>` +
+          `<div style="margin:4px 0;">${r.description}</div>` +
+          `<a href="${r.url}" style="color:#9472B6;font-size:12px;">${r.url}</a>` +
+          `</div>`
+        ).join("");
+        return card("🔍", `Support — ${sr.query.city}, ${sr.query.country}`,
+          crisis + results
+        );
+      }
+      return "";
+    }
+
+    // ── Build output ───────────────────────────────────────────────────────────
+    let content  = "";
+    let mimeType = "";
+    let filename = "";
+
+    if (format === "json") {
+      content = JSON.stringify({
+        session: {
+          user:     userName,
+          coach:    name,
+          model,
+          started:  sessionStart ? new Date(sessionStart).toISOString() : null,
+          exported: date.toISOString(),
+        },
+        messages: messages.map((m) => {
+          const entry: Record<string, unknown> = {
+            role:      m.role,
+            content:   m.content,
+            timestamp: m.timestamp ? new Date(m.timestamp).toISOString() : null,
+          };
+          const card = cardToJson(m);
+          if (card) entry.card = card;
+          return entry;
+        }),
+      }, null, 2);
+      mimeType = "application/json";
+      filename = `mental-coach-${dateStr}.json`;
+
+    } else if (format === "md") {
+      const header = [
+        `# Mental Coach Session`,
+        ``,
+        `**User:** ${userName}  |  **Coach:** ${name}  |  **Model:** ${model}` +
+          (sessionStart ? `  |  **Started:** ${new Date(sessionStart).toLocaleString()}` : ""),
+        ``,
+        `---`,
+        ``,
+      ];
+      const body = messages.flatMap((m) => {
+        const speaker = m.role === "user" ? userName : name;
+        const time    = m.timestamp
+          ? new Date(m.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+          : "";
+        const card = cardToMd(m);
+        return [`**${speaker}**${time ? `  ·  ${time}` : ""}`, ``, m.content, card, ``, `---`, ``];
+      });
+      content  = [...header, ...body].join("\n");
+      mimeType = "text/markdown";
+      filename = `mental-coach-${dateStr}.md`;
+
+    } else {
+      const esc = (s: string) =>
+        s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+      const bubblesHtml = messages.map((m) => {
+        const isUser  = m.role === "user";
+        const speaker = isUser ? userName : name;
+        const time    = m.timestamp
+          ? new Date(m.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+          : "";
+        const bg     = isUser ? "#9472B6" : "#483550";
+        const radius = isUser ? "18px 18px 4px 18px" : "18px 18px 18px 4px";
+        const align  = isUser ? "flex-end" : "flex-start";
+        const card   = cardToHtml(m);
+        return (
+          `<div style="display:flex;flex-direction:column;align-items:${align};margin-bottom:14px;">` +
+          `<div style="max-width:75%;background:${bg};color:#fff;padding:12px 16px;` +
+          `border-radius:${radius};white-space:pre-wrap;line-height:1.6;font-size:15px;">` +
+          `${esc(m.content)}${card}</div>` +
+          (time ? `<div style="font-size:11px;color:#6B7280;margin-top:4px;padding:0 4px;">${esc(speaker)} · ${time}</div>` : "") +
+          `</div>`
+        );
+      }).join("\n");
+
+      content = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Mental Coach — ${dateStr}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:#26152D;color:#fff;font-family:system-ui,sans-serif;padding:32px 16px;min-height:100vh}
+    .wrap{max-width:760px;margin:0 auto}
+    .hdr{background:#1A101E;border:1px solid #483550;border-radius:12px;padding:20px 24px;margin-bottom:24px}
+    .hdr h1{font-size:22px;font-weight:700;margin-bottom:8px}
+    .meta{font-size:13px;color:#6B7280}
+    .meta b{color:#9472B6}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hdr">
+      <h1>🌿 Mental Coach Session</h1>
+      <p class="meta">
+        User: <b>${esc(userName)}</b> &nbsp;·&nbsp;
+        Coach: <b>${esc(name)}</b> &nbsp;·&nbsp;
+        Model: <b>${esc(model)}</b>
+        ${sessionStart ? `&nbsp;·&nbsp; Started: <b>${new Date(sessionStart).toLocaleString()}</b>` : ""}
+      </p>
+    </div>
+    <div>
+${bubblesHtml}
+    </div>
+  </div>
+</body>
+</html>`;
+      mimeType = "text/html";
+      filename = `mental-coach-${dateStr}.html`;
+    }
+
+    const blob = new Blob([content], { type: mimeType });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href     = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+    setShowExportMenu(false);
+  }
 
   function scrollToBottom() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -610,6 +921,38 @@ export default function Home() {
             <p style={styles.headerSubtitle}>Your supportive AI companion</p>
           </div>
           <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            {/* Export button */}
+            <div ref={exportMenuRef} style={styles.exportButtonWrap}>
+              <button
+                style={styles.infoButton}
+                onClick={() => setShowExportMenu((v) => !v)}
+                aria-label="Export session"
+                title="Export session"
+              >
+                ⬇
+              </button>
+              {showExportMenu && (
+                <div style={styles.exportMenu}>
+                  {(["json", "md", "html"] as const).map((fmt) => (
+                    <button
+                      key={fmt}
+                      style={styles.exportMenuItem}
+                      onClick={() => exportSession(fmt)}
+                      onMouseEnter={(e) => {
+                        (e.currentTarget as HTMLButtonElement).style.background = "#483550";
+                      }}
+                      onMouseLeave={(e) => {
+                        (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+                      }}
+                    >
+                      <span>{fmt === "json" ? "📋" : fmt === "md" ? "📝" : "🌐"}</span>
+                      {fmt.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <button
               style={styles.infoButton}
               onClick={() => setShowInfoPanel((v) => !v)}

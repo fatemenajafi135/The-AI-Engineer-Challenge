@@ -303,6 +303,41 @@ export const styles: Record<string, CSSProperties> = {
   messageTime: { fontSize: "11px", color: COLORS.textSecondary, padding: "0 4px" },
   typingDots:  { display: "inline-flex", gap: "4px", alignItems: "center", fontSize: "20px", color: COLORS.textSecondary },
 
+  // ── Export button & dropdown ──────────────────────────────────────────────
+  exportButtonWrap: {
+    position: "relative" as const,
+  },
+  exportMenu: {
+    position: "absolute" as const,
+    top: "calc(100% + 6px)",
+    right: 0,
+    background: COLORS.bgSurface,
+    border: `1px solid ${COLORS.accentDim}`,
+    borderRadius: "10px",
+    padding: "6px",
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: "2px",
+    zIndex: 200,
+    minWidth: "140px",
+    boxShadow: `0 8px 24px rgba(0,0,0,0.5)`,
+  },
+  exportMenuItem: {
+    padding: "8px 14px",
+    borderRadius: "7px",
+    border: "none",
+    background: "transparent",
+    color: COLORS.textPrimary,
+    fontSize: "14px",
+    cursor: "pointer",
+    textAlign: "left" as const,
+    transition: "background 150ms ease",
+    width: "100%",
+    display: "flex",
+    gap: "8px",
+    alignItems: "center",
+  },
+
   // ── Input bar ─────────────────────────────────────────────────────────────
   inputArea: {
     display: "flex",
