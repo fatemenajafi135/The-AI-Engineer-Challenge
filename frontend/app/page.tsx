@@ -21,10 +21,10 @@ import { md } from "./markdown";
 import { BreathingWidget, type BreathingTool } from "./BreathingWidget";
 import { ReframeWidget, type ReframeTool } from "./ReframeWidget";
 import { PrepWidget, type PrepTool } from "./PrepWidget";
-import { SupportWidget, type SupportTool } from "./SupportWidget";
+import { SupportWidget, type SupportTool, type SupportResults } from "./SupportWidget";
 
 type Usage = { prompt_tokens: number; completion_tokens: number; total_tokens: number; cost: number | null };
-type Message = { role: "user" | "assistant"; content: string; timestamp?: number; usage?: Usage; breathingTool?: BreathingTool; reframeTool?: ReframeTool; prepTool?: PrepTool; supportTool?: SupportTool };
+type Message = { role: "user" | "assistant"; content: string; timestamp?: number; usage?: Usage; breathingTool?: BreathingTool; reframeTool?: ReframeTool; prepTool?: PrepTool; supportTool?: SupportTool; supportResults?: SupportResults };
 type Phase = "landing" | "chat";
 
 
@@ -735,7 +735,18 @@ export default function Home() {
                   )}
                   {!isUser && msg.supportTool && !isStreamingBubble && (
                     <div style={{ marginTop: msg.content ? 10 : 0 }}>
-                      <SupportWidget tool={msg.supportTool} apiKey={apiKey} />
+                      <SupportWidget
+                        tool={msg.supportTool}
+                        apiKey={apiKey}
+                        initialResults={msg.supportResults}
+                        onResultsSaved={(r) =>
+                          setMessages((prev) => {
+                            const next = [...prev];
+                            next[i] = { ...next[i], supportResults: r };
+                            return next;
+                          })
+                        }
+                      />
                     </div>
                   )}
                 </div>

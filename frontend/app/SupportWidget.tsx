@@ -14,7 +14,7 @@ export type SupportTool = {
   language_preference: string;
 };
 
-type SupportResult = {
+export type SupportResult = {
   name:        string;
   type:        "therapist" | "center" | "platform";
   format:      "in_person" | "online" | "hybrid";
@@ -22,10 +22,17 @@ type SupportResult = {
   url:         string;
 };
 
-type CrisisResource = {
+export type CrisisResource = {
   name:   string;
   number: string | null;
   url:    string | null;
+};
+
+// Persisted search state — query + results — stored inside the Message object
+export type SupportResults = {
+  query:   { country: string; city: string; language: string };
+  results: SupportResult[];
+  crisis:  CrisisResource | null;
 };
 
 type Stage = "form" | "loading" | "results" | "error";
@@ -46,13 +53,23 @@ const FORMAT_LABELS: Record<SupportResult["format"], string> = {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function SupportWidget({ tool, apiKey }: { tool: SupportTool; apiKey: string }) {
-  const [stage,    setStage]   = useState<Stage>("form");
-  const [country,  setCountry] = useState("");
-  const [city,     setCity]    = useState("");
-  const [language, setLanguage] = useState(tool.language_preference || "");
-  const [results,  setResults] = useState<SupportResult[]>([]);
-  const [crisis,   setCrisis]  = useState<CrisisResource | null>(null);
+export function SupportWidget({
+  tool,
+  apiKey,
+  initialResults,
+  onResultsSaved,
+}: {
+  tool:             SupportTool;
+  apiKey:           string;
+  initialResults?:  SupportResults;
+  onResultsSaved?:  (r: SupportResults) => void;
+}) {
+  const [stage,    setStage]   = useState<Stage>(initialResults ? "results" : "form");
+  const [country,  setCountry] = useState(initialResults?.query.country ?? "");
+  const [city,     setCity]    = useState(initialResults?.query.city ?? "");
+  const [language, setLanguage] = useState(initialResults?.query.language ?? tool.language_preference ?? "");
+  const [results,  setResults] = useState<SupportResult[]>(initialResults?.results ?? []);
+  const [crisis,   setCrisis]  = useState<CrisisResource | null>(initialResults?.crisis ?? null);
   const [errorMsg, setErrorMsg] = useState("");
 
   const canSearch = country.trim().length > 0 && city.trim().length > 0;
@@ -82,9 +99,16 @@ export function SupportWidget({ tool, apiKey }: { tool: SupportTool; apiKey: str
       }
 
       const data: { results: SupportResult[]; crisis: CrisisResource } = await res.json();
-      setResults(data.results || []);
-      setCrisis(data.crisis || null);
+      const fetchedResults = data.results || [];
+      const fetchedCrisis  = data.crisis  || null;
+      setResults(fetchedResults);
+      setCrisis(fetchedCrisis);
       setStage("results");
+      onResultsSaved?.({
+        query:   { country: country.trim(), city: city.trim(), language: language.trim() },
+        results: fetchedResults,
+        crisis:  fetchedCrisis,
+      });
     } catch (err) {
       setErrorMsg((err as Error).message || "Something went wrong. Please try again.");
       setStage("error");
