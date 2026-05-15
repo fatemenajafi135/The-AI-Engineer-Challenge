@@ -19,9 +19,10 @@ import {
 import { styles } from "./styles";
 import { md } from "./markdown";
 import { BreathingWidget, type BreathingTool } from "./BreathingWidget";
+import { ReframeWidget, type ReframeTool } from "./ReframeWidget";
 
 type Usage = { prompt_tokens: number; completion_tokens: number; total_tokens: number; cost: number | null };
-type Message = { role: "user" | "assistant"; content: string; timestamp?: number; usage?: Usage; breathingTool?: BreathingTool };
+type Message = { role: "user" | "assistant"; content: string; timestamp?: number; usage?: Usage; breathingTool?: BreathingTool; reframeTool?: ReframeTool };
 type Phase = "landing" | "chat";
 
 
@@ -258,19 +259,31 @@ export default function Home() {
           const trimmed = line.replace(/^data: /, "").trim();
           if (!trimmed) continue;
 
-          let parsed: { token?: string; done?: boolean; error?: string; usage?: Usage; tool_call?: { name: string; args: BreathingTool } };
+          let parsed: { token?: string; done?: boolean; error?: string; usage?: Usage; tool_call?: { name: string; args: unknown } };
           try { parsed = JSON.parse(trimmed); }
           catch { continue; }
 
           if (parsed.error) throw new Error(parsed.error);
 
           if (parsed.tool_call?.name === "breathing_exercise") {
-            const tool = parsed.tool_call.args;
+            const tool = parsed.tool_call.args as BreathingTool;
             setMessages((prev) => {
               const next = [...prev];
               const last = next[next.length - 1];
               if (last.role === "assistant") {
                 next[next.length - 1] = { ...last, breathingTool: tool };
+              }
+              return next;
+            });
+          }
+
+          if (parsed.tool_call?.name === "reframe_thought") {
+            const tool = parsed.tool_call.args as ReframeTool;
+            setMessages((prev) => {
+              const next = [...prev];
+              const last = next[next.length - 1];
+              if (last.role === "assistant") {
+                next[next.length - 1] = { ...last, reframeTool: tool };
               }
               return next;
             });
@@ -644,6 +657,9 @@ export default function Home() {
               >
                 {!isUser && msg.breathingTool && !isStreamingBubble && (
                   <BreathingWidget tool={msg.breathingTool} />
+                )}
+                {!isUser && msg.reframeTool && !isStreamingBubble && (
+                  <ReframeWidget tool={msg.reframeTool} />
                 )}
                 <div style={{ ...styles.messageBubble, ...(isUser ? styles.userBubble : styles.assistantBubble) }}>
                   {isStreamingBubble && msg.content === "" ? (

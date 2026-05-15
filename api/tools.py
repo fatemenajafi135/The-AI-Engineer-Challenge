@@ -45,13 +45,64 @@ BREATHING_EXERCISE: dict = {
     },
 }
 
-ALL_TOOLS: list[dict] = [BREATHING_EXERCISE]
+
+# ── Tool: reframe_thought ─────────────────────────────────────────────────────
+
+REFRAME_THOUGHT: dict = {
+    "type": "function",
+    "function": {
+        "name": "reframe_thought",
+        "description": (
+            "Detect a cognitive distortion in the user's statement and offer a structured reframe with evidence. "
+            "Only call when the distortion is clearly present — false positives feel patronizing. "
+            "Use the user's own words for original_thought. "
+            "Do NOT call when: user is acutely panicked (use breathing_exercise first), "
+            "user is already self-aware ('I know it's irrational but…'), "
+            "or the distortion is mild or ambiguous."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "original_thought": {
+                    "type": "string",
+                    "description": "Direct quote or close paraphrase of the user's distorted thought.",
+                },
+                "distortion_type": {
+                    "type": "string",
+                    "enum": [
+                        "catastrophizing", "overgeneralization", "all_or_nothing",
+                        "mind_reading", "fortune_telling", "personalization", "filtering",
+                    ],
+                },
+                "reframe": {
+                    "type": "string",
+                    "description": "A grounded alternative perspective — not toxic positivity.",
+                },
+                "evidence_against": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "minItems": 2,
+                    "maxItems": 4,
+                    "description": "Concrete evidence from the conversation or reasoning that contradicts the distortion.",
+                },
+            },
+            "required": ["original_thought", "distortion_type", "reframe", "evidence_against"],
+        },
+    },
+}
+
+ALL_TOOLS: list[dict] = [BREATHING_EXERCISE, REFRAME_THOUGHT]
 
 # ── System prompt addendum — appended when tools are active ───────────────────
 
 TOOLS_SYSTEM_ADDENDUM = (
-    "\n\nYou have access to the breathing_exercise tool. "
-    "Use it only when the user needs nervous system regulation in the moment — not for general stress talk. "
-    "When you call it, do not explain that you are launching a widget; "
-    "write your reply as if you are naturally introducing the exercise ('Let's do this together...')."
+    "\n\nYou have access to two interactive tools:\n"
+    "1. breathing_exercise — use when the user needs immediate nervous-system regulation "
+    "(acute panic, racing heart, explicit calm-down request). "
+    "Do NOT use for venting or mild worry.\n"
+    "2. reframe_thought — use when the user clearly expresses a cognitive distortion "
+    "(overgeneralization, catastrophizing, mind-reading, all-or-nothing, etc.). "
+    "Do NOT use when the distortion is mild or ambiguous, or when the user is already self-aware about it.\n"
+    "When you call any tool, do not explain that you are launching a widget — "
+    "write your reply naturally as if you are engaging with the content directly."
 )
