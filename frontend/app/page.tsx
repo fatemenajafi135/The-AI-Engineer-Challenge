@@ -6,6 +6,7 @@ import remarkGfm from "remark-gfm";
 import {
   CHAT_STREAM_ENDPOINT,
   COACH_OPTIONS,
+  COLORS,
   MODEL_OPTIONS,
   DEFAULT_MODEL,
   DEFAULT_TEMPERATURE,
@@ -25,24 +26,24 @@ const md: React.ComponentProps<typeof ReactMarkdown>["components"] = {
   ul:         ({ children }) => <ul style={{ margin: "4px 0 6px 0", paddingLeft: "20px" }}>{children}</ul>,
   ol:         ({ children }) => <ol style={{ margin: "4px 0 6px 0", paddingLeft: "20px" }}>{children}</ol>,
   li:         ({ children }) => <li style={{ margin: "2px 0", lineHeight: "1.6" }}>{children}</li>,
-  strong:     ({ children }) => <strong style={{ color: "#FFFFFF", fontWeight: 700 }}>{children}</strong>,
-  em:         ({ children }) => <em style={{ fontStyle: "italic", color: "#D1C4E9" }}>{children}</em>,
-  a:          ({ href, children }) => <a href={href} target="_blank" rel="noreferrer" style={{ color: "#9472B6", textDecoration: "underline" }}>{children}</a>,
-  blockquote: ({ children }) => <blockquote style={{ borderLeft: "3px solid #9472B6", margin: "6px 0", paddingLeft: "12px", color: "#9B9B9B" }}>{children}</blockquote>,
+  strong:     ({ children }) => <strong style={{ color: COLORS.textPrimary, fontWeight: 700 }}>{children}</strong>,
+  em:         ({ children }) => <em style={{ fontStyle: "italic", color: COLORS.textAccentSoft }}>{children}</em>,
+  a:          ({ href, children }) => <a href={href} target="_blank" rel="noreferrer" style={{ color: COLORS.accent, textDecoration: "underline" }}>{children}</a>,
+  blockquote: ({ children }) => <blockquote style={{ borderLeft: `3px solid ${COLORS.accent}`, margin: "6px 0", paddingLeft: "12px", color: COLORS.textMuted }}>{children}</blockquote>,
   code:       ({ className, children }) =>
     className ? (
       <code style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "13px" }}>{children}</code>
     ) : (
-      <code style={{ background: "rgba(0,0,0,0.35)", padding: "1px 5px", borderRadius: "4px", fontFamily: "'JetBrains Mono', monospace", fontSize: "0.875em" }}>{children}</code>
+      <code style={{ background: COLORS.shadowDark, padding: "1px 5px", borderRadius: "4px", fontFamily: "'JetBrains Mono', monospace", fontSize: "0.875em" }}>{children}</code>
     ),
   pre: ({ children }) => (
-    <pre style={{ background: "rgba(0,0,0,0.35)", padding: "10px 12px", borderRadius: "8px", overflowX: "auto", whiteSpace: "pre-wrap", margin: "4px 0 6px 0", fontFamily: "'JetBrains Mono', monospace", fontSize: "13px" }}>
+    <pre style={{ background: COLORS.shadowDark, padding: "10px 12px", borderRadius: "8px", overflowX: "auto", whiteSpace: "pre-wrap", margin: "4px 0 6px 0", fontFamily: "'JetBrains Mono', monospace", fontSize: "13px" }}>
       {children}
     </pre>
   ),
-  h1: ({ children }) => <h1 style={{ fontSize: "18px", fontWeight: 700, margin: "6px 0 4px 0", color: "#FFFFFF" }}>{children}</h1>,
-  h2: ({ children }) => <h2 style={{ fontSize: "16px", fontWeight: 700, margin: "6px 0 4px 0", color: "#FFFFFF" }}>{children}</h2>,
-  h3: ({ children }) => <h3 style={{ fontSize: "15px", fontWeight: 600, margin: "6px 0 4px 0", color: "#FFFFFF" }}>{children}</h3>,
+  h1: ({ children }) => <h1 style={{ fontSize: "18px", fontWeight: 700, margin: "6px 0 4px 0", color: COLORS.textPrimary }}>{children}</h1>,
+  h2: ({ children }) => <h2 style={{ fontSize: "16px", fontWeight: 700, margin: "6px 0 4px 0", color: COLORS.textPrimary }}>{children}</h2>,
+  h3: ({ children }) => <h3 style={{ fontSize: "15px", fontWeight: 600, margin: "6px 0 4px 0", color: COLORS.textPrimary }}>{children}</h3>,
 };
 
 
@@ -594,8 +595,8 @@ export default function Home() {
               <span style={styles.infoValue}>{sessionTotals.completionTokens.toLocaleString()}</span>
             </div>
             <div style={styles.infoRow}>
-              <span style={{ ...styles.infoLabel, color: "#FFFFFF", fontWeight: 600 }}>Total</span>
-              <span style={{ ...styles.infoValue, color: "#FFFFFF", fontWeight: 600 }}>{sessionTotals.totalTokens.toLocaleString()}</span>
+              <span style={{ ...styles.infoLabel, color: COLORS.textPrimary, fontWeight: 600 }}>Total</span>
+              <span style={{ ...styles.infoValue, color: COLORS.textPrimary, fontWeight: 600 }}>{sessionTotals.totalTokens.toLocaleString()}</span>
             </div>
           </div>
 
@@ -605,7 +606,7 @@ export default function Home() {
             <p style={styles.infoSectionTitle}>Estimated cost</p>
             <div style={styles.infoRow}>
               <span style={styles.infoLabel}>This session</span>
-              <span style={{ ...styles.infoValue, color: "#9472B6", fontWeight: 600 }}>
+              <span style={{ ...styles.infoValue, color: COLORS.accent, fontWeight: 600 }}>
                 {sessionTotals.totalTokens === 0
                   ? "—"
                   : sessionTotals.cost === 0
@@ -666,7 +667,7 @@ export default function Home() {
           <div style={styles.limitWarningBar}>
             <span style={styles.limitWarningText}>
               ⚠&nbsp;
-              <strong style={{ color: "#F59E0B" }}>{used}/{messageLimit}</strong>
+              <strong style={{ color: COLORS.warningText }}>{used}/{messageLimit}</strong>
               {over > 0
                 ? ` messages — ${over} over your limit. Continue?`
                 : " messages — limit reached. Continue?"}
@@ -722,18 +723,18 @@ const styles: Record<string, React.CSSProperties> = {
     gap: "12px",
     padding: "0 24px",
     textAlign: "center",
-    background: "#1A101E",
+    background: COLORS.bgSurface,
   },
   heroEmoji:    { fontSize: "52px", lineHeight: "1" },
-  heroTitle:    { fontSize: "42px", fontWeight: 800, color: "#FFFFFF", letterSpacing: "-0.5px" },
-  heroSubtitle: { fontSize: "16px", color: "#6B7280", maxWidth: "360px", lineHeight: "1.5" },
+  heroTitle:    { fontSize: "42px", fontWeight: 800, color: COLORS.textPrimary, letterSpacing: "-0.5px" },
+  heroSubtitle: { fontSize: "16px", color: COLORS.textSecondary, maxWidth: "360px", lineHeight: "1.5" },
 
   formSection: {
     flex: 1,
     overflowY: "auto",
     padding: "32px 24px 48px",
-    borderTop: "1px solid #483550",
-    background: "#26152D",
+    borderTop: `1px solid ${COLORS.accentDim}`,
+    background: COLORS.bgPrimary,
   },
   formCard: {
     display: "flex",
@@ -743,20 +744,20 @@ const styles: Record<string, React.CSSProperties> = {
     maxWidth: "440px",
     margin: "0 auto",
   },
-  formLabel: { display: "block", fontSize: "15px", fontWeight: 600, color: "#FFFFFF", marginBottom: "8px" },
+  formLabel: { display: "block", fontSize: "15px", fontWeight: 600, color: COLORS.textPrimary, marginBottom: "8px" },
   formInput: {
     width: "100%",
     padding: "14px 16px",
     borderRadius: "12px",
-    border: "1px solid #483550",
-    background: "#1A101E",
-    color: "#FFFFFF",
+    border: `1px solid ${COLORS.accentDim}`,
+    background: COLORS.bgSurface,
+    color: COLORS.textPrimary,
     fontSize: "16px",
     outline: "none",
     transition: "border-color 200ms ease",
     boxSizing: "border-box",
   },
-  formHint: { fontSize: "11px", color: "#6B7280", marginTop: "6px" },
+  formHint: { fontSize: "11px", color: COLORS.textSecondary, marginTop: "6px" },
 
   // API key field
   apiKeyWrapper: {
@@ -768,9 +769,9 @@ const styles: Record<string, React.CSSProperties> = {
     width: "100%",
     padding: "14px 70px 14px 16px",
     borderRadius: "12px",
-    border: "1px solid #483550",
-    background: "#1A101E",
-    color: "#FFFFFF",
+    border: `1px solid ${COLORS.accentDim}`,
+    background: COLORS.bgSurface,
+    color: COLORS.textPrimary,
     fontSize: "16px",
     outline: "none",
     transition: "border-color 200ms ease",
@@ -783,9 +784,9 @@ const styles: Record<string, React.CSSProperties> = {
     right: "10px",
     padding: "5px 10px",
     background: "transparent",
-    border: "1px solid #483550",
+    border: `1px solid ${COLORS.accentDim}`,
     borderRadius: "6px",
-    color: "#6B7280",
+    color: COLORS.textSecondary,
     fontSize: "12px",
     cursor: "pointer",
     transition: "all 200ms ease",
@@ -793,14 +794,14 @@ const styles: Record<string, React.CSSProperties> = {
   },
 
   // Coach selector
-  selectorLabel: { fontSize: "15px", fontWeight: 600, color: "#FFFFFF", marginBottom: "10px" },
+  selectorLabel: { fontSize: "15px", fontWeight: 600, color: COLORS.textPrimary, marginBottom: "10px" },
   pillGroup:     { display: "flex", justifyContent: "center", flexWrap: "wrap", gap: "8px" },
   pill: {
     padding: "7px 16px",
     borderRadius: "20px",
-    border: "1px solid #483550",
+    border: `1px solid ${COLORS.accentDim}`,
     background: "transparent",
-    color: "#6B7280",
+    color: COLORS.textSecondary,
     fontSize: "14px",
     cursor: "pointer",
     transition: "all 200ms ease",
@@ -809,21 +810,21 @@ const styles: Record<string, React.CSSProperties> = {
   pillActive: {
     padding: "7px 16px",
     borderRadius: "20px",
-    border: "1px solid #9472B6",
-    background: "#9472B6",
-    color: "#FFFFFF",
+    border: `1px solid ${COLORS.accent}`,
+    background: COLORS.accent,
+    color: COLORS.textPrimary,
     fontSize: "14px",
     cursor: "pointer",
     transition: "all 200ms ease",
     whiteSpace: "nowrap",
   },
-  selectorDesc: { fontSize: "12px", color: "#6B7280", marginTop: "8px", minHeight: "16px" },
+  selectorDesc: { fontSize: "12px", color: COLORS.textSecondary, marginTop: "8px", minHeight: "16px" },
 
   // Advanced options
   advancedToggle: {
     background: "transparent",
     border: "none",
-    color: "#9472B6",
+    color: COLORS.accent,
     fontSize: "14px",
     cursor: "pointer",
     padding: "4px 0",
@@ -835,9 +836,9 @@ const styles: Record<string, React.CSSProperties> = {
   advancedPanel: {
     marginTop: "14px",
     padding: "20px",
-    background: "#1A101E",
+    background: COLORS.bgSurface,
     borderRadius: "12px",
-    border: "1px solid #483550",
+    border: `1px solid ${COLORS.accentDim}`,
     display: "flex",
     flexDirection: "column",
     gap: "20px",
@@ -852,29 +853,29 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "space-between",
     alignItems: "center",
   },
-  advancedLabel: { fontSize: "13px", fontWeight: 600, color: "#FFFFFF" },
-  advancedValue: { fontSize: "13px", color: "#9472B6", fontFamily: "'JetBrains Mono', monospace" },
+  advancedLabel: { fontSize: "13px", fontWeight: 600, color: COLORS.textPrimary },
+  advancedValue: { fontSize: "13px", color: COLORS.accent, fontFamily: "'JetBrains Mono', monospace" },
   advancedSelect: {
     width: "100%",
     padding: "10px 12px",
     borderRadius: "8px",
-    border: "1px solid #483550",
-    background: "#26152D",
-    color: "#FFFFFF",
+    border: `1px solid ${COLORS.accentDim}`,
+    background: COLORS.bgPrimary,
+    color: COLORS.textPrimary,
     fontSize: "14px",
     outline: "none",
     cursor: "pointer",
   },
   advancedSlider: {
     width: "100%",
-    accentColor: "#9472B6",
+    accentColor: COLORS.accent,
     cursor: "pointer",
   },
   sliderHints: {
     display: "flex",
     justifyContent: "space-between",
     fontSize: "11px",
-    color: "#6B7280",
+    color: COLORS.textSecondary,
   },
 
   // Start button
@@ -882,17 +883,17 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "14px",
     borderRadius: "12px",
     border: "none",
-    background: "#9472B6",
-    color: "#FFFFFF",
+    background: COLORS.accent,
+    color: COLORS.textPrimary,
     fontSize: "16px",
     fontWeight: 600,
     cursor: "pointer",
     transition: "background 200ms ease",
-    boxShadow: "0 4px 24px rgba(167, 139, 250, 0.2)",
+    boxShadow: `0 4px 24px ${COLORS.shadowAccentMd}`,
   },
   startButtonDisabled: {
-    background: "#483550",
-    color: "#6B7280",
+    background: COLORS.accentDim,
+    color: COLORS.textSecondary,
     cursor: "not-allowed",
     boxShadow: "none",
   },
@@ -909,20 +910,20 @@ const styles: Record<string, React.CSSProperties> = {
   },
   header: {
     padding: "20px 24px 16px",
-    borderBottom: "1px solid #483550",
-    background: "#1A101E",
+    borderBottom: `1px solid ${COLORS.accentDim}`,
+    background: COLORS.bgSurface,
     borderRadius: "0 0 12px 12px",
-    boxShadow: "0 4px 24px rgba(167, 139, 250, 0.1)",
+    boxShadow: `0 4px 24px ${COLORS.shadowAccent}`,
   },
   headerRow:     { display: "flex", alignItems: "center", justifyContent: "space-between" },
-  headerTitle:   { fontSize: "22px", fontWeight: 700, color: "#FFFFFF" },
-  headerSubtitle: { fontSize: "13px", color: "#6B7280", marginTop: "2px" },
+  headerTitle:   { fontSize: "22px", fontWeight: 700, color: COLORS.textPrimary },
+  headerSubtitle: { fontSize: "13px", color: COLORS.textSecondary, marginTop: "2px" },
   newSessionButton: {
     padding: "7px 14px",
     borderRadius: "8px",
-    border: "1px solid #483550",
+    border: `1px solid ${COLORS.accentDim}`,
     background: "transparent",
-    color: "#6B7280",
+    color: COLORS.textSecondary,
     fontSize: "13px",
     cursor: "pointer",
     transition: "all 200ms ease",
@@ -930,9 +931,9 @@ const styles: Record<string, React.CSSProperties> = {
   infoButton: {
     padding: "6px 10px",
     borderRadius: "8px",
-    border: "1px solid #483550",
+    border: `1px solid ${COLORS.accentDim}`,
     background: "transparent",
-    color: "#9472B6",
+    color: COLORS.accent,
     fontSize: "16px",
     cursor: "pointer",
     lineHeight: "1",
@@ -943,11 +944,11 @@ const styles: Record<string, React.CSSProperties> = {
     top: "72px",
     right: "16px",
     width: "260px",
-    background: "#1A101E",
-    border: "1px solid #483550",
+    background: COLORS.bgSurface,
+    border: `1px solid ${COLORS.accentDim}`,
     borderRadius: "12px",
     padding: "16px",
-    boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
+    boxShadow: `0 8px 32px ${COLORS.shadowHeavy}`,
     zIndex: 100,
     display: "flex",
     flexDirection: "column",
@@ -956,7 +957,7 @@ const styles: Record<string, React.CSSProperties> = {
   infoPanelTitle: {
     fontSize: "13px",
     fontWeight: 700,
-    color: "#FFFFFF",
+    color: COLORS.textPrimary,
     margin: 0,
   },
   infoSection: {
@@ -967,7 +968,7 @@ const styles: Record<string, React.CSSProperties> = {
   infoSectionTitle: {
     fontSize: "10px",
     fontWeight: 600,
-    color: "#6B7280",
+    color: COLORS.textSecondary,
     textTransform: "uppercase" as const,
     letterSpacing: "0.08em",
     margin: 0,
@@ -979,16 +980,16 @@ const styles: Record<string, React.CSSProperties> = {
   },
   infoLabel: {
     fontSize: "13px",
-    color: "#6B7280",
+    color: COLORS.textSecondary,
   },
   infoValue: {
     fontSize: "13px",
-    color: "#FFFFFF",
+    color: COLORS.textPrimary,
     fontFamily: "'JetBrains Mono', monospace",
   },
   infoDivider: {
     height: "1px",
-    background: "#483550",
+    background: COLORS.accentDim,
   },
 
   messageListWrapper: {
@@ -1004,12 +1005,12 @@ const styles: Record<string, React.CSSProperties> = {
     zIndex: 10,
     padding: "6px 16px",
     borderRadius: "20px",
-    border: "1px solid #483550",
-    background: "#1A101E",
-    color: "#9472B6",
+    border: `1px solid ${COLORS.accentDim}`,
+    background: COLORS.bgSurface,
+    color: COLORS.accent,
     fontSize: "16px",
     cursor: "pointer",
-    boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
+    boxShadow: `0 4px 16px ${COLORS.shadowMedium}`,
     transition: "all 200ms ease",
   },
   messageList: {
@@ -1030,45 +1031,45 @@ const styles: Record<string, React.CSSProperties> = {
     transition: "all 200ms ease",
   },
   userBubble: {
-    background: "#9472B6",
-    color: "#FFFFFF",
+    background: COLORS.accent,
+    color: COLORS.textPrimary,
     borderBottomRightRadius: "4px",
-    boxShadow: "0 4px 24px rgba(167, 139, 250, 0.1)",
+    boxShadow: `0 4px 24px ${COLORS.shadowAccent}`,
   },
   assistantBubble: {
-    background: "#483550",
-    color: "#FFFFFF",
+    background: COLORS.accentDim,
+    color: COLORS.textPrimary,
     borderBottomLeftRadius: "4px",
-    boxShadow: "0 4px 24px rgba(167, 139, 250, 0.1)",
+    boxShadow: `0 4px 24px ${COLORS.shadowAccent}`,
   },
   messageTime: {
     fontSize: "11px",
-    color: "#6B7280",
+    color: COLORS.textSecondary,
     padding: "0 4px",
   },
-  typingDots: { display: "inline-flex", gap: "4px", alignItems: "center", fontSize: "20px", color: "#6B7280" },
+  typingDots: { display: "inline-flex", gap: "4px", alignItems: "center", fontSize: "20px", color: COLORS.textSecondary },
 
   inputArea: {
     display: "flex",
     gap: "10px",
     padding: "16px",
-    borderTop: "1px solid #483550",
-    background: "#1A101E",
+    borderTop: `1px solid ${COLORS.accentDim}`,
+    background: COLORS.bgSurface,
     alignItems: "flex-end",
     borderRadius: "12px 12px 0 0",
-    boxShadow: "0 4px 24px rgba(167, 139, 250, 0.1)",
+    boxShadow: `0 4px 24px ${COLORS.shadowAccent}`,
   },
   textarea: {
     flex: 1,
     padding: "12px 14px",
     borderRadius: "12px",
-    border: "1px solid #483550",
+    border: `1px solid ${COLORS.accentDim}`,
     fontSize: "15px",
     resize: "none",
     outline: "none",
     fontFamily: "inherit",
-    color: "#FFFFFF",
-    background: "#26152D",
+    color: COLORS.textPrimary,
+    background: COLORS.bgPrimary,
     lineHeight: "1.5",
     minHeight: "48px",
     maxHeight: "140px",
@@ -1079,15 +1080,15 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "12px 22px",
     borderRadius: "12px",
     border: "none",
-    background: "#9472B6",
-    color: "#FFFFFF",
+    background: COLORS.accent,
+    color: COLORS.textPrimary,
     fontSize: "15px",
     fontWeight: 600,
     cursor: "pointer",
     whiteSpace: "nowrap",
     transition: "background 200ms ease",
   },
-  sendButtonDisabled: { background: "#483550", color: "#6B7280", cursor: "not-allowed" },
+  sendButtonDisabled: { background: COLORS.accentDim, color: COLORS.textSecondary, cursor: "not-allowed" },
 
   // Limit warning bar
   limitWarningBar: {
@@ -1096,12 +1097,12 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "space-between",
     gap: "12px",
     padding: "10px 16px",
-    borderTop: "1px solid #C97316",
-    background: "#1A101E",
+    borderTop: `1px solid ${COLORS.warningBorder}`,
+    background: COLORS.bgSurface,
   },
   limitWarningText: {
     fontSize: "13px",
-    color: "#F59E0B",
+    color: COLORS.warningText,
     flex: 1,
   },
   limitWarningActions: {
@@ -1112,9 +1113,9 @@ const styles: Record<string, React.CSSProperties> = {
   limitCancelBtn: {
     padding: "5px 12px",
     borderRadius: "8px",
-    border: "1px solid #483550",
+    border: `1px solid ${COLORS.accentDim}`,
     background: "transparent",
-    color: "#6B7280",
+    color: COLORS.textSecondary,
     fontSize: "13px",
     cursor: "pointer",
   },
@@ -1122,8 +1123,8 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "5px 12px",
     borderRadius: "8px",
     border: "none",
-    background: "#9472B6",
-    color: "#FFFFFF",
+    background: COLORS.accent,
+    color: COLORS.textPrimary,
     fontSize: "13px",
     fontWeight: 600,
     cursor: "pointer",

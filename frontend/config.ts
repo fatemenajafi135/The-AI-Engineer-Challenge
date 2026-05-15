@@ -5,6 +5,36 @@
  * Backend constants live separately in /api/index.py.
  */
 
+// ── Color palette ─────────────────────────────────────────────────────────────
+// Named by role, not by hue — swap hex values here to retheme the entire app.
+
+export const COLORS = {
+  // Backgrounds
+  bgPrimary:      "#26152D",  // main page background
+  bgSurface:      "#1A101E",  // header, cards, input bar
+
+  // Accents
+  accent:         "#9472B6",  // user bubbles, send button, links, active pills
+  accentDim:      "#483550",  // assistant bubbles, hover state, borders
+
+  // Text
+  textPrimary:    "#FFFFFF",
+  textSecondary:  "#6B7280",  // muted labels, hints
+  textMuted:      "#9B9B9B",  // blockquote text
+  textAccentSoft: "#D1C4E9",  // em / italic in markdown
+
+  // Shadows & overlays (used inside boxShadow / background compound values)
+  shadowAccent:   "rgba(167, 139, 250, 0.1)",  // subtle indigo glow
+  shadowAccentMd: "rgba(167, 139, 250, 0.2)",  // stronger glow (start button)
+  shadowDark:     "rgba(0,0,0,0.35)",           // code block background
+  shadowMedium:   "rgba(0,0,0,0.4)",            // scroll-to-bottom button
+  shadowHeavy:    "rgba(0,0,0,0.6)",            // panel overlays
+
+  // Warning
+  warningText:    "#F59E0B",  // amber message text
+  warningBorder:  "#C97316",  // amber border
+} as const;
+
 // ── API endpoints ─────────────────────────────────────────────────────────────
 
 export const CHAT_STREAM_ENDPOINT = "/api/chat/stream";
