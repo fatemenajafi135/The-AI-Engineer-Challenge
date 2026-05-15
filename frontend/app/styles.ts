@@ -332,7 +332,7 @@ export const styles: Record<string, CSSProperties> = {
     transition: "border-color 200ms ease",
   },
   sendButton: {
-    padding: "12px 22px",
+    padding: "0 22px",
     borderRadius: "12px",
     border: "none",
     background: COLORS.accent,
@@ -342,6 +342,7 @@ export const styles: Record<string, CSSProperties> = {
     cursor: "pointer",
     whiteSpace: "nowrap",
     transition: "background 200ms ease",
+    alignSelf: "stretch",
   },
   sendButtonDisabled: { background: COLORS.accentDim, color: COLORS.textSecondary, cursor: "not-allowed" },
 
