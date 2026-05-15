@@ -53,6 +53,7 @@ export default function Home() {
   const listRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const infoPanelRef = useRef<HTMLDivElement>(null);
 
   // Restore full session from localStorage on mount
   useEffect(() => {
@@ -116,6 +117,17 @@ export default function Home() {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
+
+  useEffect(() => {
+    if (!showInfoPanel) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (infoPanelRef.current && !infoPanelRef.current.contains(e.target as Node)) {
+        setShowInfoPanel(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showInfoPanel]);
 
   function scrollToBottom() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -519,7 +531,7 @@ export default function Home() {
         <div style={styles.headerRow}>
           <div>
             <h1 style={styles.headerTitle}>🌿 Mental Coach</h1>
-            <p style={styles.headerSubtitle}>{userName} · {coachName} · {model}</p>
+            <p style={styles.headerSubtitle}>Your supportive AI companion</p>
           </div>
           <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
             <button
@@ -537,7 +549,7 @@ export default function Home() {
       </header>
 
       {showInfoPanel && (
-        <div style={styles.infoPanel}>
+        <div ref={infoPanelRef} style={styles.infoPanel}>
           <p style={styles.infoPanelTitle}>Session Info</p>
 
           <div style={styles.infoSection}>
