@@ -11,11 +11,11 @@ BREATHING_EXERCISE: dict = {
     "function": {
         "name": "breathing_exercise",
         "description": (
-            "Render an interactive breathing widget for the user. "
-            "Call this when: the user is in acute stress or panic, mentions racing heart / shortness of breath / 'can't calm down', "
-            "explicitly asks for a calming technique, or describes acute stress about an imminent event. "
-            "Do NOT call this when: the user is venting and wants to be heard, processing thoughts, "
-            "or expressing mild worry — respond with text in those cases."
+            "HIGHEST PRIORITY TOOL. Call this when the user is in acute physiological distress RIGHT NOW: "
+            "panic, racing heart, shortness of breath, 'I can't calm down', shaking. "
+            "Call this even if they also mention an upcoming event — calm first, prep later. "
+            "Do NOT call for: venting, mild worry, general stress, or future events without acute distress. "
+            "NEVER write breathing instructions as text — always call this tool instead."
         ),
         "parameters": {
             "type": "object",
@@ -53,12 +53,12 @@ REFRAME_THOUGHT: dict = {
     "function": {
         "name": "reframe_thought",
         "description": (
-            "Detect a cognitive distortion in the user's statement and offer a structured reframe with evidence. "
-            "Only call when the distortion is clearly present — false positives feel patronizing. "
-            "Use the user's own words for original_thought. "
-            "Do NOT call when: user is acutely panicked (use breathing_exercise first), "
-            "user is already self-aware ('I know it's irrational but…'), "
-            "or the distortion is mild or ambiguous."
+            "Call when the user clearly expresses a cognitive distortion "
+            "(overgeneralization, catastrophizing, mind-reading, all-or-nothing, fortune-telling, personalization, filtering). "
+            "Do NOT call when: user is acutely panicked (breathing_exercise first), "
+            "user is preparing for a specific upcoming event (prep_for_situation instead), "
+            "distortion is mild or ambiguous, or user is already self-aware about the thought. "
+            "NEVER write a reframe card as formatted text — always call this tool instead."
         ),
         "parameters": {
             "type": "object",
@@ -91,18 +91,97 @@ REFRAME_THOUGHT: dict = {
     },
 }
 
-ALL_TOOLS: list[dict] = [BREATHING_EXERCISE, REFRAME_THOUGHT]
+
+# ── Tool: prep_for_situation ──────────────────────────────────────────────────
+
+PREP_FOR_SITUATION: dict = {
+    "type": "function",
+    "function": {
+        "name": "prep_for_situation",
+        "description": (
+            "Generate a structured prep card for a specific, time-bounded upcoming event the user wants to prepare for. "
+            "Second priority after breathing_exercise. Beats reframe_thought when both could apply. "
+            "Call when: user names a concrete event (interview, presentation, hard conversation, exam, etc.) "
+            "AND shows preparation intent ('I need to prepare', 'help me get ready', 'what should I do before'). "
+            "Do NOT call when: user is in acute panic (use breathing_exercise first), "
+            "event is vague or far in the future with no urgency, "
+            "or user just wants to vent about the event without preparing. "
+            "scripts field: populate ONLY when situation_type is hard_conversation — omit for all others. "
+            "NEVER write a prep card as formatted text or markdown — always call this tool instead."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "situation_type": {
+                    "type": "string",
+                    "enum": [
+                        "interview", "presentation", "hard_conversation",
+                        "medical", "exam", "first_date", "performance_review", "other",
+                    ],
+                },
+                "event_description": {
+                    "type": "string",
+                    "description": "Brief description of the specific event in the user's words.",
+                },
+                "worries": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "minItems": 2,
+                    "maxItems": 5,
+                    "description": "Specific worries the user expressed or that are typical for this situation type.",
+                },
+                "reframes": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "minItems": 2,
+                    "maxItems": 5,
+                    "description": "One grounded reframe per worry, in the same order. Not dismissive.",
+                },
+                "anchors": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "minItems": 3,
+                    "maxItems": 4,
+                    "description": "Concrete grounding steps for before the event: breathing resets, physical grounding, mental reminders. Always provide 3-4.",
+                },
+                "scripts": {
+                    "type": "array",
+                    "description": "Conversation scripts — ONLY for hard_conversation. Omit for all other types.",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "tone": {"type": "string", "enum": ["direct", "gentle", "written"]},
+                            "text": {"type": "string"},
+                        },
+                        "required": ["tone", "text"],
+                    },
+                },
+            },
+            "required": ["situation_type", "event_description", "worries", "reframes", "anchors"],
+        },
+    },
+}
+
+ALL_TOOLS: list[dict] = [BREATHING_EXERCISE, REFRAME_THOUGHT, PREP_FOR_SITUATION]
 
 # ── System prompt addendum — appended when tools are active ───────────────────
 
 TOOLS_SYSTEM_ADDENDUM = (
-    "\n\nYou have access to two interactive tools:\n"
-    "1. breathing_exercise — use when the user needs immediate nervous-system regulation "
-    "(acute panic, racing heart, explicit calm-down request). "
-    "Do NOT use for venting or mild worry.\n"
-    "2. reframe_thought — use when the user clearly expresses a cognitive distortion "
-    "(overgeneralization, catastrophizing, mind-reading, all-or-nothing, etc.). "
-    "Do NOT use when the distortion is mild or ambiguous, or when the user is already self-aware about it.\n"
-    "When you call any tool, do not explain that you are launching a widget — "
-    "write your reply naturally as if you are engaging with the content directly."
+    "\n\nTool-calling rules — read carefully before every reply:\n\n"
+    "CRITICAL OVERRIDE: Your base instructions say to provide step-by-step guidance as text. "
+    "That rule applies ONLY when no tool is relevant. When a tool applies, you MUST call the tool — "
+    "do NOT write its content (prep card sections, reframe panels, breathing steps) as markdown or formatted text. "
+    "Writing a prep card, reframe, or breathing exercise as text instead of calling the tool is wrong. "
+    "Your text reply should only briefly introduce or follow up on the tool — never replicate it.\n\n"
+    "- Call AT MOST ONE tool per response. Never call two tools in one turn.\n"
+    "- Use this priority ladder when multiple tools could apply:\n\n"
+    "  1. breathing_exercise — user is in acute physiological distress RIGHT NOW "
+    "(panic, racing heart, shaking, 'I can\\'t breathe'). "
+    "Use even if they also mention an upcoming event. Calm first.\n"
+    "  2. prep_for_situation — user names a SPECIFIC upcoming event AND wants to prepare. "
+    "Use even if they also express a cognitive distortion — address the distortion in your text reply instead.\n"
+    "  3. reframe_thought — user expresses a CLEAR cognitive distortion with no specific upcoming event.\n"
+    "  4. Text only — venting, mild worry, self-aware thoughts, vague future events, casual conversation.\n\n"
+    "When in doubt, use text. A missed tool is better than a false positive.\n"
+    "When you call a tool, write your text reply naturally — never say 'I am launching a widget'."
 )

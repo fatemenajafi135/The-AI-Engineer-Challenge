@@ -20,9 +20,10 @@ import { styles } from "./styles";
 import { md } from "./markdown";
 import { BreathingWidget, type BreathingTool } from "./BreathingWidget";
 import { ReframeWidget, type ReframeTool } from "./ReframeWidget";
+import { PrepWidget, type PrepTool } from "./PrepWidget";
 
 type Usage = { prompt_tokens: number; completion_tokens: number; total_tokens: number; cost: number | null };
-type Message = { role: "user" | "assistant"; content: string; timestamp?: number; usage?: Usage; breathingTool?: BreathingTool; reframeTool?: ReframeTool };
+type Message = { role: "user" | "assistant"; content: string; timestamp?: number; usage?: Usage; breathingTool?: BreathingTool; reframeTool?: ReframeTool; prepTool?: PrepTool };
 type Phase = "landing" | "chat";
 
 
@@ -284,6 +285,18 @@ export default function Home() {
               const last = next[next.length - 1];
               if (last.role === "assistant") {
                 next[next.length - 1] = { ...last, reframeTool: tool };
+              }
+              return next;
+            });
+          }
+
+          if (parsed.tool_call?.name === "prep_for_situation") {
+            const tool = parsed.tool_call.args as PrepTool;
+            setMessages((prev) => {
+              const next = [...prev];
+              const last = next[next.length - 1];
+              if (last.role === "assistant") {
+                next[next.length - 1] = { ...last, prepTool: tool };
               }
               return next;
             });
@@ -660,6 +673,9 @@ export default function Home() {
                 )}
                 {!isUser && msg.reframeTool && !isStreamingBubble && (
                   <ReframeWidget tool={msg.reframeTool} />
+                )}
+                {!isUser && msg.prepTool && !isStreamingBubble && (
+                  <PrepWidget tool={msg.prepTool} />
                 )}
                 <div style={{ ...styles.messageBubble, ...(isUser ? styles.userBubble : styles.assistantBubble) }}>
                   {isStreamingBubble && msg.content === "" ? (
