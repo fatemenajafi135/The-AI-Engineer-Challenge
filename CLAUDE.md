@@ -53,3 +53,29 @@
 - When you create README.md's - they should be dope, and use fun and approachable language.
 - While being fun, they should remain technically accurate.
 
+
+## Refactoring
+
+### When to Refactor
+- Refactor in the current feature branch before merging into main
+- Never branch off unfinished or messy code — clean first, then branch
+- Main must always be deployable and clean
+
+### Constants & Config
+- All frontend constants live in `/frontend/config.ts` — model name, API base URL, persona definitions, system prompts
+- All backend constants live in `/api/config.py` 
+- Do not merge frontend and backend configs — keep them separate files
+- If a constant is shared between frontend and backend, duplicate it and mark it with a comment:
+  `# kept in sync with frontend/config.ts`
+- Nothing should be hardcoded inline — no magic strings, no scattered model names
+
+### Environment Variables
+- Sensitive values (e.g. `OPENAI_API_KEY`) must always come from environment variables
+- Never hardcode secrets or keys anywhere in the codebase
+- Local dev uses `.env.local`, production uses Vercel environment variable settings
+
+### General Rules
+- Refactoring must never change logic or functionality — only move, rename, or reorganize
+- After any refactor, leave a short summary comment at the top of the changed file explaining what was moved and why
+- Keep one config file per layer (one for frontend, one for backend) — do not create multiple scattered config files
+- When in doubt, duplication between frontend and backend is acceptable — overengineering a shared config is not worth it at this scale
