@@ -301,7 +301,7 @@ export const styles: Record<string, CSSProperties> = {
     boxShadow: `0 4px 24px ${COLORS.shadowAccent}`,
   },
   messageTime: { fontSize: "11px", color: COLORS.textSecondary, padding: "0 4px" },
-  typingDots:  { display: "inline-flex", gap: "4px", alignItems: "center", fontSize: "20px", color: COLORS.textSecondary },
+  typingDots:  { fontStyle: "italic", fontSize: "15px", color: COLORS.textSecondary },
 
   // ── Export button & dropdown ──────────────────────────────────────────────
   exportButtonWrap: {

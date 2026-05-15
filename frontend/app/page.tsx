@@ -53,6 +53,9 @@ export default function Home() {
   const [showInfoPanel, setShowInfoPanel] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [sessionStart, setSessionStart] = useState<number | null>(null);
+  const [typingFrame, setTypingFrame] = useState(0);
+
+  const TYPING_FRAMES = ["typing", "typing .", "typing ..", "typing ...", "typing ..", "typing ."];
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -145,6 +148,14 @@ export default function Home() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showExportMenu]);
+
+  useEffect(() => {
+    if (!streaming) { setTypingFrame(0); return; }
+    const id = setInterval(() => {
+      setTypingFrame((f) => (f + 1) % TYPING_FRAMES.length);
+    }, 400);
+    return () => clearInterval(id);
+  }, [streaming]);
 
   function exportSession(format: "json" | "md" | "html") {
     const date    = new Date();
@@ -1055,7 +1066,7 @@ ${bubblesHtml}
                   ...(hasCard ? { maxWidth: "620px" } : {}),
                 }}>
                   {isStreamingBubble && msg.content === "" ? (
-                    <span style={styles.typingDots}><span>●</span><span>●</span><span>●</span></span>
+                    <span style={styles.typingDots}>{TYPING_FRAMES[typingFrame]}</span>
                   ) : (
                     <ReactMarkdown remarkPlugins={[remarkGfm]} components={md}>
                       {isStreamingBubble ? msg.content + " ▍" : msg.content}
