@@ -2,7 +2,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from openai import OpenAI, AsyncOpenAI
+from openai import OpenAI, AsyncOpenAI, RateLimitError, APIStatusError, APIConnectionError
+import asyncio
+import logging
 import os
 import re
 import json
@@ -78,12 +80,31 @@ def _validate_message(text: str) -> None:
         )
 
 
+logger = logging.getLogger(__name__)
+
 # Default clients — used when the request carries no api_key
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 async_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 DEFAULT_MAX_TOKENS = 1024
 DEFAULT_MODEL = "gpt-4o-mini"
+
+# ── Retry config ─────────────────────────────────────────────────────────────
+
+_RETRY_MAX = 3
+_RETRY_BASE_DELAY = 1.0  # seconds; doubles each attempt: 1 → 2 → 4
+
+
+def _is_retryable(exc: Exception) -> bool:
+    """Rate-limit (429) and server errors (5xx) are transient — worth retrying.
+    Client errors (4xx except 429) indicate a bad request and should not retry."""
+    if isinstance(exc, RateLimitError):
+        return True
+    if isinstance(exc, APIConnectionError):
+        return True
+    if isinstance(exc, APIStatusError):
+        return exc.status_code >= 500
+    return False
 
 # ── Prompt building ──────────────────────────────────────────────────────────
 
@@ -180,7 +201,8 @@ def chat(request: ChatRequest):
     key = _resolve_key(request)
     try:
         history = [{"role": m.role, "content": m.content} for m in request.history[-5:]]
-        response = OpenAI(api_key=key).chat.completions.create(
+        # max_retries lets the SDK handle rate-limit and 5xx backoff automatically
+        response = OpenAI(api_key=key, max_retries=_RETRY_MAX).chat.completions.create(
             model=request.model,
             messages=[
                 {"role": "system", "content": build_system_prompt(request.coach)},
@@ -207,19 +229,46 @@ async def chat_stream(request: ChatRequest):
     key = _resolve_key(request)
 
     async def token_generator():
+        history = [{"role": m.role, "content": m.content} for m in request.history[-5:]]
+        messages = [
+            {"role": "system", "content": build_system_prompt(request.coach)},
+            *history,
+            {"role": "user", "content": request.message},
+        ]
+
+        # Retry only the initial connection — once tokens are flowing, mid-stream
+        # retry is impossible (partial data already sent to the client).
+        aclient = AsyncOpenAI(api_key=key, max_retries=0)  # retries managed below
+        stream = None
+        last_exc: Exception | None = None
+
+        for attempt in range(_RETRY_MAX + 1):
+            try:
+                stream = await aclient.chat.completions.create(
+                    model=request.model,
+                    messages=messages,
+                    stream=True,
+                    temperature=request.temperature,
+                    max_tokens=request.max_tokens,
+                )
+                break
+            except Exception as exc:
+                last_exc = exc
+                if _is_retryable(exc) and attempt < _RETRY_MAX:
+                    delay = _RETRY_BASE_DELAY * (2 ** attempt)
+                    logger.warning(
+                        "OpenAI transient error (attempt %d/%d), retrying in %.0fs: %s",
+                        attempt + 1, _RETRY_MAX, delay, exc,
+                    )
+                    await asyncio.sleep(delay)
+                else:
+                    break
+
+        if stream is None:
+            yield f"data: {json.dumps({'error': str(last_exc)})}\n\n"
+            return
+
         try:
-            history = [{"role": m.role, "content": m.content} for m in request.history[-5:]]
-            stream = await AsyncOpenAI(api_key=key).chat.completions.create(
-                model=request.model,
-                messages=[
-                    {"role": "system", "content": build_system_prompt(request.coach)},
-                    *history,
-                    {"role": "user", "content": request.message},
-                ],
-                stream=True,
-                temperature=request.temperature,
-                max_tokens=request.max_tokens,
-            )
             async for chunk in stream:
                 delta = chunk.choices[0].delta
                 if delta.content:
