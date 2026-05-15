@@ -28,9 +28,18 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  if (!upstream.ok || !upstream.body) {
-    return new Response(JSON.stringify({ error: "Backend error" }), {
+  if (!upstream.ok) {
+    // Forward the backend's error body so the frontend receives the real detail message
+    const errBody = await upstream.text();
+    return new Response(errBody, {
       status: upstream.status,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  if (!upstream.body) {
+    return new Response(JSON.stringify({ error: "Backend error" }), {
+      status: 502,
       headers: { "Content-Type": "application/json" },
     });
   }

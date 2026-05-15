@@ -4,6 +4,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from openai import OpenAI, AsyncOpenAI
 import os
+import re
 import json
 from dotenv import load_dotenv
 
@@ -17,6 +18,65 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"]
 )
+
+# ── Prompt injection guards ──────────────────────────────────────────────────
+
+MAX_MESSAGE_LENGTH = 500
+
+_INJECTION_PATTERNS = [
+    # ── Classic instruction overrides ─────────────────────────────────────────
+    r"ignore\s+(all\s+)?(previous|prior|above|your)\s+(instructions?|rules?|constraints?|prompt|context)",
+    r"(disregard|forget|override|bypass|circumvent|skip)\s+(all\s+)?(previous|prior|your|the|any)\s+(instructions?|rules?|constraints?|guidelines?|prompt|training)",
+
+    # ── Session-scoped overrides ("from now on…", "new instructions:") ────────
+    r"(from\s+now\s+on|starting\s+now|for\s+this\s+(conversation|chat|session)|henceforth)\s*[,.]?\s*(you\s+(are|will|must|should|can)|ignore|forget|disregard|act)",
+    r"your\s+(new\s+)?(instructions?|rules?|prompt|persona|role|task|directive)\s*(are|is)\s*:",
+    r"new\s+(instructions?|rules?|prompt|task|persona|directive)\s*:",
+
+    # ── Role-prefix injection — fake "system:" / "assistant:" in body ─────────
+    r"(^|\n)\s*(system|assistant)\s*:\s+",
+
+    # ── Named jailbreak modes & keywords ──────────────────────────────────────
+    r"\b(jailbreak|DAN|developer\s+mode|god\s+mode|unrestricted\s+mode)\b",
+    r"you\s+(have\s+no|are\s+without|are\s+free\s+from)\s+(restrictions?|limitations?|constraints?|rules?|guidelines?|filters?)",
+    r"you\s+can\s+(now\s+)?(do|say|answer|respond\s+to)\s+anything",
+    r"(act|behave|pretend|respond)\s+as\s+if\s+you\s+(have\s+no|are\s+without)\s+(restrictions?|limitations?|constraints?|rules?)",
+
+    # ── Common jailbreak token formats ────────────────────────────────────────
+    r"\[\s*inst\s*\]",
+    r"<\|im_start\|>",
+    r"<\|system\|>",
+    r"<\s*(system|prompt|instruction)\s*>",
+
+    # ── Persona / identity hijacking ──────────────────────────────────────────
+    r"your\s+(true|real|actual|hidden|secret)\s+(name|identity|self|purpose|nature|role|instructions?)\s+(is|are)",
+    r"(pretend|act|roleplay|play)\s+(that\s+you('re|\s+are|\s+were)|as\s+if\s+you('re|\s+are|\s+were)|as)\s+(a\s+)?(different|new|another|unrestricted|uncensored|evil|opposite|real)",
+
+    # ── Prompt / instruction extraction ───────────────────────────────────────
+    # "what's / what is / what are / what were your (system) prompt/instructions…"
+    r"what\s*'?s?\s+(is\s+|are\s+|were\s+|was\s+)?your\s+(system\s+)?(prompt|instructions?|directives?|rules?|guidelines?|configuration|config|setup|training)",
+    # verb list — tell/show/give/reveal/repeat/output/print/share/leak/expose/dump
+    r"(tell|show|give|share|reveal|repeat|output|print|display|describe|explain|list|write|copy|paste|leak|expose|dump)\s+(me\s+)?(your\s+)?(exact\s+)?(system\s+)?(prompt|instructions?|rules?|guidelines?|directives?|configuration|config)",
+    # "what were/are you instructed/told/programmed/trained to do/say"
+    r"what\s+(were|are)\s+you\s+(instructed|told|programmed|trained|configured|designed|built|made)\s+(to\s+)?(do|say|respond|act|behave)",
+    # "how were/are you programmed/configured/set up/trained"
+    r"how\s+(were|are)\s+you\s+(programmed|instructed|configured|set\s+up|trained|built|designed)",
+]
+_COMPILED = [re.compile(p, re.IGNORECASE) for p in _INJECTION_PATTERNS]
+
+
+def _validate_message(text: str) -> None:
+    if len(text) > MAX_MESSAGE_LENGTH:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Message too long — please keep it under {MAX_MESSAGE_LENGTH} characters.",
+        )
+    if any(p.search(text) for p in _COMPILED):
+        raise HTTPException(
+            status_code=400,
+            detail="Message blocked: it looks like a prompt injection attempt.",
+        )
+
 
 # Default clients — used when the request carries no api_key
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -116,6 +176,7 @@ def root():
 
 @app.post("/api/chat")
 def chat(request: ChatRequest):
+    _validate_message(request.message)
     key = _resolve_key(request)
     try:
         history = [{"role": m.role, "content": m.content} for m in request.history[-5:]]
@@ -142,6 +203,7 @@ async def chat_stream(request: ChatRequest):
     Each event: data: {"token": "..."}\n\n
     Final event: data: {"done": true}\n\n
     """
+    _validate_message(request.message)
     key = _resolve_key(request)
 
     async def token_generator():

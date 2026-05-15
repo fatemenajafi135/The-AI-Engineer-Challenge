@@ -273,7 +273,11 @@ export default function Home() {
         signal: controller.signal,
       });
 
-      if (!res.ok || !res.body) throw new Error("Server error");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || "Server error");
+      }
+      if (!res.body) throw new Error("Server error");
 
       const reader  = res.body.getReader();
       const decoder = new TextDecoder();
@@ -311,13 +315,14 @@ export default function Home() {
       }
     } catch (err) {
       if ((err as Error).name === "AbortError") return;
+      const errMsg = (err as Error).message || "Sorry, something went wrong. Please try again.";
       setMessages((prev) => {
         const next = [...prev];
         const last = next[next.length - 1];
         if (last.role === "assistant" && !last.content) {
-          next[next.length - 1] = { role: "assistant", content: "Sorry, something went wrong. Please try again." };
+          next[next.length - 1] = { role: "assistant", content: errMsg, timestamp: Date.now() };
         } else {
-          next.push({ role: "assistant", content: "Sorry, something went wrong. Please try again." });
+          next.push({ role: "assistant", content: errMsg, timestamp: Date.now() });
         }
         return next;
       });
