@@ -39,8 +39,17 @@ export const COLORS = {
 
 export const CHAT_STREAM_ENDPOINT = "/api/chat/stream";
 
+// ── Typography ────────────────────────────────────────────────────────────────
+
+export const MONO_FONT = "'JetBrains Mono', monospace";
+
+// ── App metadata ──────────────────────────────────────────────────────────────
+
+export const APP_TITLE       = "Mental Coach";
+export const APP_DESCRIPTION = "Your supportive AI mental coach";
+
 // ── Defaults ─────────────────────────────────────────────────────────────────
-// kept in sync with api/index.py
+// kept in sync with api/config.py
 
 export const DEFAULT_MODEL         = "gpt-4o-mini";
 export const DEFAULT_TEMPERATURE   = 0.7;
