@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-type Message = { role: "user" | "assistant"; content: string };
+type Message = { role: "user" | "assistant"; content: string; timestamp?: number };
 type Phase = "landing" | "chat";
 
 // Styled markdown components — theme colours hardcoded so this stays outside the component
@@ -192,6 +192,7 @@ export default function Home() {
     setMessages([{
       role: "assistant",
       content: `Hi ${name}! I'm your mental wellness coach — here to support you with stress, motivation, habits, and confidence. What's on your mind today?`,
+      timestamp: Date.now(),
     }]);
     setPhase("chat");
   }
@@ -243,14 +244,15 @@ export default function Home() {
   async function executeSend(text: string) {
     const history = messages.map((m) => ({ role: m.role, content: m.content }));
 
-    setMessages((prev) => [...prev, { role: "user", content: text }]);
+    const now = Date.now();
+    setMessages((prev) => [...prev, { role: "user", content: text, timestamp: now }]);
     setInput("");
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
       textareaRef.current.style.overflowY = "hidden";
     }
     setStreaming(true);
-    setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+    setMessages((prev) => [...prev, { role: "assistant", content: "", timestamp: Date.now() }]);
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -555,22 +557,32 @@ export default function Home() {
         )}
         <div ref={listRef} style={styles.messageList}>
           {messages.map((msg, i) => {
+            const isUser = msg.role === "user";
             const isStreamingBubble =
-              streaming && msg.role === "assistant" && i === messages.length - 1;
+              streaming && !isUser && i === messages.length - 1;
             return (
               <div
                 key={i}
                 style={{
-                  ...styles.messageBubble,
-                  ...(msg.role === "user" ? styles.userBubble : styles.assistantBubble),
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: isUser ? "flex-end" : "flex-start",
+                  gap: "4px",
                 }}
               >
-                {isStreamingBubble && msg.content === "" ? (
-                  <span style={styles.typingDots}><span>●</span><span>●</span><span>●</span></span>
-                ) : (
-                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={md}>
-                    {isStreamingBubble ? msg.content + " ▍" : msg.content}
-                  </ReactMarkdown>
+                <div style={{ ...styles.messageBubble, ...(isUser ? styles.userBubble : styles.assistantBubble) }}>
+                  {isStreamingBubble && msg.content === "" ? (
+                    <span style={styles.typingDots}><span>●</span><span>●</span><span>●</span></span>
+                  ) : (
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={md}>
+                      {isStreamingBubble ? msg.content + " ▍" : msg.content}
+                    </ReactMarkdown>
+                  )}
+                </div>
+                {msg.timestamp && !isStreamingBubble && (
+                  <span style={styles.messageTime}>
+                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </span>
                 )}
               </div>
             );
@@ -888,16 +900,19 @@ const styles: Record<string, React.CSSProperties> = {
   userBubble: {
     background: "#9472B6",
     color: "#FFFFFF",
-    alignSelf: "flex-end",
     borderBottomRightRadius: "4px",
     boxShadow: "0 4px 24px rgba(167, 139, 250, 0.1)",
   },
   assistantBubble: {
     background: "#483550",
     color: "#FFFFFF",
-    alignSelf: "flex-start",
     borderBottomLeftRadius: "4px",
     boxShadow: "0 4px 24px rgba(167, 139, 250, 0.1)",
+  },
+  messageTime: {
+    fontSize: "11px",
+    color: "#6B7280",
+    padding: "0 4px",
   },
   typingDots: { display: "inline-flex", gap: "4px", alignItems: "center", fontSize: "20px", color: "#6B7280" },
 
