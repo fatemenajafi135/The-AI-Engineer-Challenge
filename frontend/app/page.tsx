@@ -52,6 +52,7 @@ export default function Home() {
 
   const [showInfoPanel, setShowInfoPanel] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showToolsPanel, setShowToolsPanel] = useState(false);
   const [sessionStart, setSessionStart] = useState<number | null>(null);
   const [typingFrame, setTypingFrame] = useState(0);
 
@@ -63,6 +64,7 @@ export default function Home() {
   const abortRef = useRef<AbortController | null>(null);
   const infoPanelRef = useRef<HTMLDivElement>(null);
   const exportMenuRef = useRef<HTMLDivElement>(null);
+  const toolsPanelRef = useRef<HTMLDivElement>(null);
 
   // Restore full session from localStorage on mount
   useEffect(() => {
@@ -148,6 +150,17 @@ export default function Home() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showExportMenu]);
+
+  useEffect(() => {
+    if (!showToolsPanel) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (toolsPanelRef.current && !toolsPanelRef.current.contains(e.target as Node)) {
+        setShowToolsPanel(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showToolsPanel]);
 
   useEffect(() => {
     if (!streaming) { setTypingFrame(0); return; }
@@ -932,41 +945,25 @@ ${bubblesHtml}
             <p style={styles.headerSubtitle}>Your supportive AI companion</p>
           </div>
           <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-            {/* Export button */}
-            <div ref={exportMenuRef} style={styles.exportButtonWrap}>
-              <button
-                style={styles.infoButton}
-                onClick={() => setShowExportMenu((v) => !v)}
-                aria-label="Export session"
-                title="Export session"
-              >
-                ⬇
-              </button>
-              {showExportMenu && (
-                <div style={styles.exportMenu}>
-                  {(["json", "md", "html"] as const).map((fmt) => (
-                    <button
-                      key={fmt}
-                      style={styles.exportMenuItem}
-                      onClick={() => exportSession(fmt)}
-                      onMouseEnter={(e) => {
-                        (e.currentTarget as HTMLButtonElement).style.background = "#483550";
-                      }}
-                      onMouseLeave={(e) => {
-                        (e.currentTarget as HTMLButtonElement).style.background = "transparent";
-                      }}
-                    >
-                      <span>{fmt === "json" ? "📋" : fmt === "md" ? "📝" : "🌐"}</span>
-                      {fmt.toUpperCase()}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
             <button
               style={styles.infoButton}
-              onClick={() => setShowInfoPanel((v) => !v)}
+              onClick={() => { setShowToolsPanel((v) => !v); setShowInfoPanel(false); setShowExportMenu(false); }}
+              aria-label="Available tools"
+              title="Available tools"
+            >
+              ⚒
+            </button>
+            <button
+              style={styles.infoButton}
+              onClick={() => { setShowExportMenu((v) => !v); setShowInfoPanel(false); setShowToolsPanel(false); }}
+              aria-label="Export session"
+              title="Export session"
+            >
+              ⬇
+            </button>
+            <button
+              style={styles.infoButton}
+              onClick={() => { setShowInfoPanel((v) => !v); setShowExportMenu(false); setShowToolsPanel(false); }}
               aria-label="Session info"
             >
               🛈
@@ -977,6 +974,50 @@ ${bubblesHtml}
           </div>
         </div>
       </header>
+
+      {showToolsPanel && (
+        <div ref={toolsPanelRef} style={styles.infoPanel}>
+          <p style={styles.infoPanelTitle}>Available Tools</p>
+          <div style={styles.infoDivider} />
+          <div style={styles.infoSection}>
+            {[
+              "Breathing Exercise",
+              "Thought Reframe",
+              "Prep for Situation",
+              "Support Finder (web search)",
+            ].map((tool) => (
+              <div key={tool} style={styles.infoRow}>
+                <span style={styles.infoLabel}>{tool}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {showExportMenu && (
+        <div ref={exportMenuRef} style={styles.infoPanel}>
+          <p style={styles.infoPanelTitle}>Export Session</p>
+          <div style={styles.infoDivider} />
+          <div style={styles.infoSection}>
+            {([
+              { fmt: "json",  label: "JSON",     ext: ".json" },
+              { fmt: "md",    label: "Markdown",  ext: ".md"   },
+              { fmt: "html",  label: "HTML",      ext: ".html" },
+            ] as const).map(({ fmt, label, ext }) => (
+              <button
+                key={fmt}
+                onClick={() => exportSession(fmt)}
+                style={{ ...styles.infoRow, border: "none", background: "transparent", cursor: "pointer", width: "100%", padding: "2px 0", textAlign: "left" as const }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.7"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
+              >
+                <span style={styles.infoLabel}>{label}</span>
+                <span style={styles.infoValue}>{ext}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {showInfoPanel && (
         <div ref={infoPanelRef} style={styles.infoPanel}>
