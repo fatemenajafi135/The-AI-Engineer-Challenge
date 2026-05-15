@@ -743,6 +743,260 @@ export const styles: Record<string, CSSProperties> = {
     cursor: "default",
   },
 
+  // ── Professional support widget ──────────────────────────────────────────
+  // Shared card container for all stages (form / loading / results / error).
+  supportCard: {
+    width: "100%",
+    maxWidth: "520px",
+    background: COLORS.bgSurface,
+    borderRadius: "16px",
+    border: `1px solid ${COLORS.accentDim}`,
+    boxShadow: `0 4px 24px ${COLORS.shadowAccent}`,
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden",
+  },
+
+  // Stage: form
+  supportFormHeader: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "4px",
+    padding: "18px 20px 14px",
+    borderBottom: `1px solid ${COLORS.accentDim}`,
+  },
+  supportFormTitle: {
+    fontSize: "15px",
+    fontWeight: 700,
+    color: COLORS.textPrimary,
+    lineHeight: "1.4",
+  },
+  supportFormSubtitle: {
+    fontSize: "12px",
+    color: COLORS.textSecondary,
+    lineHeight: "1.4",
+  },
+  supportFormBody: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "14px",
+    padding: "16px 20px 20px",
+  },
+  supportFormRow: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "6px",
+  },
+  supportFormLabel: {
+    fontSize: "12px",
+    fontWeight: 600,
+    color: COLORS.textPrimary,
+    letterSpacing: "0.02em",
+  },
+  supportFormInput: {
+    padding: "10px 12px",
+    borderRadius: "10px",
+    border: `1px solid ${COLORS.accentDim}`,
+    background: COLORS.bgPrimary,
+    color: COLORS.textPrimary,
+    fontSize: "14px",
+    outline: "none",
+    transition: "border-color 200ms ease",
+    boxSizing: "border-box" as const,
+    width: "100%",
+  },
+  supportSubmitBtn: {
+    alignSelf: "flex-end" as const,
+    padding: "9px 20px",
+    borderRadius: "10px",
+    border: "none",
+    background: COLORS.accent,
+    color: COLORS.textPrimary,
+    fontSize: "14px",
+    fontWeight: 600,
+    cursor: "pointer",
+    transition: "all 200ms ease",
+  },
+  supportSubmitBtnDisabled: {
+    background: COLORS.accentDim,
+    color: COLORS.textSecondary,
+    cursor: "not-allowed",
+  },
+
+  // Stage: loading
+  supportLoadingWrap: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: "12px",
+    padding: "28px 20px",
+  },
+  supportLoadingText: {
+    fontSize: "13px",
+    color: COLORS.textSecondary,
+    textAlign: "center" as const,
+    lineHeight: "1.5",
+  },
+
+  // Stage: error
+  supportErrorWrap: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: "14px",
+    padding: "24px 20px",
+  },
+  supportErrorText: {
+    fontSize: "13px",
+    color: COLORS.warningText,
+    textAlign: "center" as const,
+    lineHeight: "1.5",
+  },
+
+  // Stage: results — crisis strip (always at top)
+  supportCrisisStrip: {
+    display: "flex",
+    alignItems: "center",
+    flexWrap: "wrap" as const,
+    gap: "8px",
+    padding: "10px 20px",
+    background: "rgba(148, 114, 182, 0.06)",
+    borderBottom: `1px solid ${COLORS.accentDim}`,
+  },
+  supportCrisisLabel: {
+    fontSize: "11px",
+    fontWeight: 700,
+    color: COLORS.textSecondary,
+    textTransform: "uppercase" as const,
+    letterSpacing: "0.06em",
+  },
+  supportCrisisName: {
+    fontSize: "12px",
+    color: COLORS.textPrimary,
+    fontWeight: 600,
+  },
+  supportCrisisNumber: {
+    fontSize: "12px",
+    color: COLORS.accent,
+    fontWeight: 700,
+  },
+  supportCrisisLink: {
+    fontSize: "12px",
+    color: COLORS.accent,
+    textDecoration: "none" as const,
+    fontWeight: 600,
+    transition: "opacity 200ms ease",
+  },
+
+  // Results header
+  supportResultsHeader: {
+    fontSize: "13px",
+    color: COLORS.textSecondary,
+    padding: "14px 20px 6px",
+    lineHeight: "1.4",
+  },
+
+  // No results fallback
+  supportNoResults: {
+    fontSize: "13px",
+    color: COLORS.textSecondary,
+    padding: "16px 20px",
+    lineHeight: "1.5",
+    fontStyle: "italic" as const,
+  },
+
+  // Individual result card
+  supportResultCard: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "8px",
+    padding: "14px 20px",
+    borderTop: `1px solid ${COLORS.accentDim}`,
+  },
+  supportResultTop: {
+    display: "flex",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: "10px",
+    flexWrap: "wrap" as const,
+  },
+  supportResultName: {
+    fontSize: "14px",
+    fontWeight: 700,
+    color: COLORS.textPrimary,
+    lineHeight: "1.4",
+    flex: 1,
+  },
+  supportResultTagRow: {
+    display: "flex",
+    gap: "6px",
+    flexShrink: 0,
+    flexWrap: "wrap" as const,
+  },
+  supportResultTag: {
+    padding: "2px 8px",
+    borderRadius: "20px",
+    border: `1px solid ${COLORS.accentDim}`,
+    background: "transparent",
+    color: COLORS.textSecondary,
+    fontSize: "11px",
+    fontWeight: 600,
+  },
+  supportResultFormatTag: {
+    padding: "2px 8px",
+    borderRadius: "20px",
+    border: `1px solid ${COLORS.accent}`,
+    background: "rgba(148, 114, 182, 0.10)",
+    color: COLORS.accent,
+    fontSize: "11px",
+    fontWeight: 600,
+  },
+  supportResultDesc: {
+    fontSize: "13px",
+    color: COLORS.textSecondary,
+    lineHeight: "1.5",
+    margin: 0,
+  },
+  supportResultLink: {
+    alignSelf: "flex-end" as const,
+    fontSize: "12px",
+    color: COLORS.accent,
+    fontWeight: 600,
+    textDecoration: "none" as const,
+    padding: "4px 10px",
+    borderRadius: "8px",
+    border: `1px solid ${COLORS.accent}`,
+    transition: "all 200ms ease",
+  },
+
+  // Results footer
+  supportResultsFooter: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "12px",
+    padding: "12px 20px 16px",
+    borderTop: `1px solid ${COLORS.accentDim}`,
+    flexWrap: "wrap" as const,
+  },
+  supportDisclaimer: {
+    fontSize: "11px",
+    color: COLORS.textSecondary,
+    lineHeight: "1.4",
+    flex: 1,
+  },
+  supportSearchAgainBtn: {
+    padding: "5px 14px",
+    borderRadius: "8px",
+    border: `1px solid ${COLORS.accentDim}`,
+    background: "transparent",
+    color: COLORS.textSecondary,
+    fontSize: "12px",
+    cursor: "pointer",
+    transition: "all 200ms ease",
+    flexShrink: 0,
+  },
+
   // ── Message limit warning bar ─────────────────────────────────────────────
   limitWarningBar: {
     display: "flex",

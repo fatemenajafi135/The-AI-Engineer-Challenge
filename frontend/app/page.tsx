@@ -21,9 +21,10 @@ import { md } from "./markdown";
 import { BreathingWidget, type BreathingTool } from "./BreathingWidget";
 import { ReframeWidget, type ReframeTool } from "./ReframeWidget";
 import { PrepWidget, type PrepTool } from "./PrepWidget";
+import { SupportWidget, type SupportTool } from "./SupportWidget";
 
 type Usage = { prompt_tokens: number; completion_tokens: number; total_tokens: number; cost: number | null };
-type Message = { role: "user" | "assistant"; content: string; timestamp?: number; usage?: Usage; breathingTool?: BreathingTool; reframeTool?: ReframeTool; prepTool?: PrepTool };
+type Message = { role: "user" | "assistant"; content: string; timestamp?: number; usage?: Usage; breathingTool?: BreathingTool; reframeTool?: ReframeTool; prepTool?: PrepTool; supportTool?: SupportTool };
 type Phase = "landing" | "chat";
 
 
@@ -297,6 +298,18 @@ export default function Home() {
               const last = next[next.length - 1];
               if (last.role === "assistant") {
                 next[next.length - 1] = { ...last, prepTool: tool };
+              }
+              return next;
+            });
+          }
+
+          if (parsed.tool_call?.name === "find_professional_support") {
+            const tool = parsed.tool_call.args as SupportTool;
+            setMessages((prev) => {
+              const next = [...prev];
+              const last = next[next.length - 1];
+              if (last.role === "assistant") {
+                next[next.length - 1] = { ...last, supportTool: tool };
               }
               return next;
             });
@@ -676,6 +689,9 @@ export default function Home() {
                 )}
                 {!isUser && msg.prepTool && !isStreamingBubble && (
                   <PrepWidget tool={msg.prepTool} />
+                )}
+                {!isUser && msg.supportTool && !isStreamingBubble && (
+                  <SupportWidget tool={msg.supportTool} apiKey={apiKey} />
                 )}
                 <div style={{ ...styles.messageBubble, ...(isUser ? styles.userBubble : styles.assistantBubble) }}>
                   {isStreamingBubble && msg.content === "" ? (

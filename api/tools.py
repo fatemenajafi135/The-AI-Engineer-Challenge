@@ -15,7 +15,9 @@ BREATHING_EXERCISE: dict = {
             "panic, racing heart, shortness of breath, 'I can't calm down', shaking. "
             "Call this even if they also mention an upcoming event — calm first, prep later. "
             "Do NOT call for: venting, mild worry, general stress, or future events without acute distress. "
-            "NEVER write breathing instructions as text — always call this tool instead."
+            "NEVER write breathing instructions as text — always call this tool instead. "
+            "If the user expresses self-harm or suicidal ideation, do NOT call any tool — "
+            "surface crisis resources directly in your text reply immediately."
         ),
         "parameters": {
             "type": "object",
@@ -162,7 +164,55 @@ PREP_FOR_SITUATION: dict = {
     },
 }
 
-ALL_TOOLS: list[dict] = [BREATHING_EXERCISE, REFRAME_THOUGHT, PREP_FOR_SITUATION]
+# ── Tool: find_professional_support ──────────────────────────────────────────
+
+FIND_PROFESSIONAL_SUPPORT: dict = {
+    "type": "function",
+    "function": {
+        "name": "find_professional_support",
+        "description": (
+            "FOURTH PRIORITY TOOL. Call ONLY when the user explicitly requests real professional human support — "
+            "a therapist, counselor, psychologist, or mental health professional. "
+            "Clear triggers: 'I need a therapist', 'coaching isn't enough', 'I want to talk to a real person', "
+            "'can you find me a professional', 'I need real help beyond coaching'. "
+            "Do NOT call for: venting (even about wanting help), user already has a therapist, "
+            "casual mention of therapy without an explicit request to find one, "
+            "acute panic (use breathing_exercise first), "
+            "self-harm or suicidal ideation (NEVER call any tool — surface crisis resources directly in text immediately). "
+            "This tool only renders a location form (Stage 1). The widget handles Stage 2 search directly. "
+            "NEVER write resource listings or therapy recommendations as text — always call this tool instead."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "concern_type": {
+                    "type": "string",
+                    "enum": [
+                        "anxiety", "depression", "trauma", "relationships",
+                        "grief", "addiction", "general", "other",
+                    ],
+                    "description": "Primary concern inferred from the conversation. Use 'general' when unclear.",
+                },
+                "format_preference": {
+                    "type": "string",
+                    "enum": ["in_person", "online", "either"],
+                    "description": "Whether the user has expressed a format preference. Default 'either' if not stated.",
+                },
+                "language_preference": {
+                    "type": "string",
+                    "description": (
+                        "Two-letter ISO language code if the user expressed a preference (e.g. 'fa', 'en', 'es'). "
+                        "Empty string if none mentioned."
+                    ),
+                },
+            },
+            "required": ["concern_type", "format_preference", "language_preference"],
+        },
+    },
+}
+
+
+ALL_TOOLS: list[dict] = [BREATHING_EXERCISE, REFRAME_THOUGHT, PREP_FOR_SITUATION, FIND_PROFESSIONAL_SUPPORT]
 
 # ── System prompt addendum — appended when tools are active ───────────────────
 
@@ -170,9 +220,12 @@ TOOLS_SYSTEM_ADDENDUM = (
     "\n\nTool-calling rules — read carefully before every reply:\n\n"
     "CRITICAL OVERRIDE: Your base instructions say to provide step-by-step guidance as text. "
     "That rule applies ONLY when no tool is relevant. When a tool applies, you MUST call the tool — "
-    "do NOT write its content (prep card sections, reframe panels, breathing steps) as markdown or formatted text. "
-    "Writing a prep card, reframe, or breathing exercise as text instead of calling the tool is wrong. "
+    "do NOT write its content (prep card sections, reframe panels, breathing steps, resource listings) as markdown or formatted text. "
+    "Writing a prep card, reframe, breathing exercise, or professional support listing as text instead of calling the tool is wrong. "
     "Your text reply should only briefly introduce or follow up on the tool — never replicate it.\n\n"
+    "SAFETY OVERRIDE (highest of all): If the user expresses self-harm or suicidal ideation, "
+    "do NOT call any tool. Respond with compassion and immediately surface crisis resources "
+    "(e.g. 988 Lifeline in the US, Samaritans 116 123 in the UK) directly in your text reply.\n\n"
     "- Call AT MOST ONE tool per response. Never call two tools in one turn.\n"
     "- Use this priority ladder when multiple tools could apply:\n\n"
     "  1. breathing_exercise — user is in acute physiological distress RIGHT NOW "
@@ -181,7 +234,10 @@ TOOLS_SYSTEM_ADDENDUM = (
     "  2. prep_for_situation — user names a SPECIFIC upcoming event AND wants to prepare. "
     "Use even if they also express a cognitive distortion — address the distortion in your text reply instead.\n"
     "  3. reframe_thought — user expresses a CLEAR cognitive distortion with no specific upcoming event.\n"
-    "  4. Text only — venting, mild worry, self-aware thoughts, vague future events, casual conversation.\n\n"
+    "  4. find_professional_support — user EXPLICITLY asks to find a real therapist or professional. "
+    "Triggers: 'I need a therapist', 'coaching isn\\'t enough', 'I want to talk to someone qualified'. "
+    "Do NOT call for: venting, existing therapist, casual therapy mention, or any crisis/self-harm signal.\n"
+    "  5. Text only — venting, mild worry, self-aware thoughts, vague events, casual conversation.\n\n"
     "When in doubt, use text. A missed tool is better than a false positive.\n"
     "When you call a tool, write your text reply naturally — never say 'I am launching a widget'."
 )

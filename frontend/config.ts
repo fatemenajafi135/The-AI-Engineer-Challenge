@@ -37,7 +37,8 @@ export const COLORS = {
 
 // ── API endpoints ─────────────────────────────────────────────────────────────
 
-export const CHAT_STREAM_ENDPOINT = "/api/chat/stream";
+export const CHAT_STREAM_ENDPOINT    = "/api/chat/stream";
+export const SUPPORT_SEARCH_ENDPOINT = "/api/support/search";
 
 // ── Typography ────────────────────────────────────────────────────────────────
 
