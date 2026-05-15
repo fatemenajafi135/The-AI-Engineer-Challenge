@@ -18,9 +18,10 @@ import {
 } from "../config";
 import { styles } from "./styles";
 import { md } from "./markdown";
+import { BreathingWidget, type BreathingTool } from "./BreathingWidget";
 
 type Usage = { prompt_tokens: number; completion_tokens: number; total_tokens: number; cost: number | null };
-type Message = { role: "user" | "assistant"; content: string; timestamp?: number; usage?: Usage };
+type Message = { role: "user" | "assistant"; content: string; timestamp?: number; usage?: Usage; breathingTool?: BreathingTool };
 type Phase = "landing" | "chat";
 
 
@@ -257,11 +258,24 @@ export default function Home() {
           const trimmed = line.replace(/^data: /, "").trim();
           if (!trimmed) continue;
 
-          let parsed: { token?: string; done?: boolean; error?: string; usage?: Usage };
+          let parsed: { token?: string; done?: boolean; error?: string; usage?: Usage; tool_call?: { name: string; args: BreathingTool } };
           try { parsed = JSON.parse(trimmed); }
           catch { continue; }
 
           if (parsed.error) throw new Error(parsed.error);
+
+          if (parsed.tool_call?.name === "breathing_exercise") {
+            const tool = parsed.tool_call.args;
+            setMessages((prev) => {
+              const next = [...prev];
+              const last = next[next.length - 1];
+              if (last.role === "assistant") {
+                next[next.length - 1] = { ...last, breathingTool: tool };
+              }
+              return next;
+            });
+          }
+
           if (parsed.done) {
             if (parsed.usage) {
               const usage = parsed.usage;
@@ -628,6 +642,9 @@ export default function Home() {
                   gap: "4px",
                 }}
               >
+                {!isUser && msg.breathingTool && !isStreamingBubble && (
+                  <BreathingWidget tool={msg.breathingTool} />
+                )}
                 <div style={{ ...styles.messageBubble, ...(isUser ? styles.userBubble : styles.assistantBubble) }}>
                   {isStreamingBubble && msg.content === "" ? (
                     <span style={styles.typingDots}><span>●</span><span>●</span><span>●</span></span>

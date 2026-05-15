@@ -1,6 +1,12 @@
 """
 Chat routes and all supporting logic: validation, retry, cost calculation,
 prompt assembly, and API key resolution.
+
+Two-phase streaming (2026-05-15):
+  Phase 1 — call OpenAI with tools (tool_choice="auto").
+             If the model calls a tool, accumulate its args and emit a tool_call SSE event.
+  Phase 2 — call OpenAI again with the tool result injected to get the text response.
+  If no tool is called in Phase 1, tokens stream directly without a Phase 2 round-trip.
 """
 
 import asyncio
@@ -24,6 +30,7 @@ from .config import (
 )
 from .history import build_history
 from .models import ChatRequest
+from .tools import ALL_TOOLS, TOOLS_SYSTEM_ADDENDUM
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -72,7 +79,7 @@ def _calc_cost(model: str, prompt_tokens: int, completion_tokens: int) -> float 
 
 def build_system_prompt(coach: str) -> str:
     coach_text = COACH_PROMPTS.get(coach, COACH_PROMPTS[DEFAULT_COACH])
-    return f"{BASE_PROMPT}\n\n{coach_text}"
+    return f"{BASE_PROMPT}\n\n{coach_text}{TOOLS_SYSTEM_ADDENDUM}"
 
 
 # ── API key resolution ────────────────────────────────────────────────────────
@@ -83,6 +90,51 @@ def _resolve_key(request: ChatRequest) -> str:
     if not key:
         raise HTTPException(status_code=500, detail="No OpenAI API key provided")
     return key
+
+
+# ── Streaming helper ──────────────────────────────────────────────────────────
+
+async def _open_stream(
+    aclient: AsyncOpenAI,
+    *,
+    model: str,
+    messages: list,
+    temperature: float,
+    max_tokens: int,
+    tools: list | None = None,
+):
+    """Open an OpenAI streaming completion, retrying on transient errors.
+    Passes tools + tool_choice='auto' only when tools is provided.
+    Returns the stream object, or None if all retries are exhausted."""
+    kwargs: dict = dict(
+        model=model,
+        messages=messages,
+        stream=True,
+        stream_options={"include_usage": True},
+        temperature=temperature,
+        max_tokens=max_tokens,
+    )
+    if tools:
+        kwargs["tools"] = tools
+        kwargs["tool_choice"] = "auto"
+
+    last_exc: Exception | None = None
+    for attempt in range(RETRY_MAX + 1):
+        try:
+            return await aclient.chat.completions.create(**kwargs)
+        except Exception as exc:
+            last_exc = exc
+            if _is_retryable(exc) and attempt < RETRY_MAX:
+                delay = RETRY_BASE_DELAY * (2 ** attempt)
+                logger.warning(
+                    "OpenAI transient error (attempt %d/%d), retrying in %.0fs: %s",
+                    attempt + 1, RETRY_MAX, delay, exc,
+                )
+                await asyncio.sleep(delay)
+            else:
+                break
+    logger.error("All OpenAI retries exhausted: %s", last_exc)
+    return None
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
@@ -129,8 +181,12 @@ async def chat(request: ChatRequest):
 async def chat_stream(request: ChatRequest):
     """
     Streams the assistant reply as Server-Sent Events (SSE).
-    Each token event: data: {"token": "..."}
-    Final event:      data: {"done": true, "usage": {...}}
+
+    Event types emitted:
+      {"tool_call": {"name": "...", "args": {...}}}  — model invoked a tool
+      {"token": "..."}                               — text token
+      {"done": true, "usage": {...}}                 — stream complete
+      {"error": "..."}                               — unrecoverable error
     """
     _validate_message(request.message)
     key = _resolve_key(request)
@@ -143,61 +199,126 @@ async def chat_stream(request: ChatRequest):
             {"role": "user", "content": request.message},
         ]
 
-        # Retry only the initial connection — once tokens are flowing, mid-stream
-        # retry is impossible (partial data already sent to the client).
-        aclient = AsyncOpenAI(api_key=key, max_retries=0)  # retries managed below
-        stream = None
-        last_exc: Exception | None = None
+        aclient = AsyncOpenAI(api_key=key, max_retries=0)  # retries managed by _open_stream
 
-        for attempt in range(RETRY_MAX + 1):
-            try:
-                stream = await aclient.chat.completions.create(
-                    model=request.model,
-                    messages=messages,
-                    stream=True,
-                    stream_options={"include_usage": True},
-                    temperature=request.temperature,
-                    max_tokens=request.max_tokens,
-                )
-                break
-            except Exception as exc:
-                last_exc = exc
-                if _is_retryable(exc) and attempt < RETRY_MAX:
-                    delay = RETRY_BASE_DELAY * (2 ** attempt)
-                    logger.warning(
-                        "OpenAI transient error (attempt %d/%d), retrying in %.0fs: %s",
-                        attempt + 1, RETRY_MAX, delay, exc,
-                    )
-                    await asyncio.sleep(delay)
-                else:
-                    break
-
+        # ── Phase 1: call with tools ──────────────────────────────────────────
+        stream = await _open_stream(
+            aclient,
+            model=request.model,
+            messages=messages,
+            temperature=request.temperature,
+            max_tokens=request.max_tokens,
+            tools=ALL_TOOLS,
+        )
         if stream is None:
-            yield f"data: {json.dumps({'error': str(last_exc)})}\n\n"
+            yield f"data: {json.dumps({'error': 'Could not connect to OpenAI'})}\n\n"
             return
 
+        # tool_calls_by_idx accumulates fragmented tool call chunks keyed by index
+        tool_calls_by_idx: dict[int, dict] = {}
+        usage_data = None
+
         try:
-            usage_data = None
             async for chunk in stream:
-                # The final usage-only chunk has choices=[] — guard before indexing
                 if chunk.choices:
                     delta = chunk.choices[0].delta
+
+                    # Accumulate tool call argument fragments (arrive in pieces across chunks)
+                    if delta.tool_calls:
+                        for tc in delta.tool_calls:
+                            idx = tc.index
+                            if idx not in tool_calls_by_idx:
+                                tool_calls_by_idx[idx] = {"id": "", "name": "", "arguments": ""}
+                            entry = tool_calls_by_idx[idx]
+                            if tc.id:
+                                entry["id"] = tc.id
+                            if tc.function:
+                                if tc.function.name:
+                                    entry["name"] = tc.function.name
+                                if tc.function.arguments:
+                                    entry["arguments"] += tc.function.arguments
+
+                    # Direct text token — model chose not to call a tool this turn
                     if delta.content:
                         yield f"data: {json.dumps({'token': delta.content})}\n\n"
+
                 if chunk.usage:
                     usage_data = chunk.usage
-
-            done_payload: dict = {"done": True}
-            if usage_data:
-                done_payload["usage"] = {
-                    "prompt_tokens": usage_data.prompt_tokens,
-                    "completion_tokens": usage_data.completion_tokens,
-                    "total_tokens": usage_data.total_tokens,
-                    "cost": _calc_cost(request.model, usage_data.prompt_tokens, usage_data.completion_tokens),
-                }
-            yield f"data: {json.dumps(done_payload)}\n\n"
         except Exception as e:
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            return
+
+        # ── Phase 2: process tool calls, then get text reply ──────────────────
+        if tool_calls_by_idx:
+            sorted_tcs = [tool_calls_by_idx[i] for i in sorted(tool_calls_by_idx)]
+
+            # Emit each tool call to the frontend before the assistant text arrives
+            for tc in sorted_tcs:
+                try:
+                    args = json.loads(tc["arguments"])
+                except Exception:
+                    args = {}
+                yield f"data: {json.dumps({'tool_call': {'name': tc['name'], 'args': args}})}\n\n"
+
+            # Reconstruct the assistant's tool_calls message for the follow-up call
+            tool_call_list = [
+                {
+                    "id": tc["id"],
+                    "type": "function",
+                    "function": {"name": tc["name"], "arguments": tc["arguments"]},
+                }
+                for tc in sorted_tcs
+            ]
+
+            # Tool result: simple acknowledgment — the model already computed the values
+            tool_results = [
+                {
+                    "role": "tool",
+                    "tool_call_id": tc["id"],
+                    "content": json.dumps({"acknowledged": True}),
+                }
+                for tc in sorted_tcs
+            ]
+
+            phase2_messages = [
+                *messages,
+                {"role": "assistant", "content": None, "tool_calls": tool_call_list},
+                *tool_results,
+            ]
+
+            stream2 = await _open_stream(
+                aclient,
+                model=request.model,
+                messages=phase2_messages,
+                temperature=request.temperature,
+                max_tokens=request.max_tokens,
+            )
+            if stream2 is None:
+                yield f"data: {json.dumps({'error': 'Phase 2 connection failed'})}\n\n"
+                return
+
+            try:
+                async for chunk in stream2:
+                    if chunk.choices:
+                        delta = chunk.choices[0].delta
+                        if delta.content:
+                            yield f"data: {json.dumps({'token': delta.content})}\n\n"
+                    if chunk.usage:
+                        usage_data = chunk.usage  # overwrite with Phase 2 usage
+            except Exception as e:
+                yield f"data: {json.dumps({'error': str(e)})}\n\n"
+                return
+
+        # ── Final done event ──────────────────────────────────────────────────
+        done_payload: dict = {"done": True}
+        if usage_data:
+            done_payload["usage"] = {
+                "prompt_tokens": usage_data.prompt_tokens,
+                "completion_tokens": usage_data.completion_tokens,
+                "total_tokens": usage_data.total_tokens,
+                "cost": _calc_cost(request.model, usage_data.prompt_tokens, usage_data.completion_tokens),
+            }
+        yield f"data: {json.dumps(done_payload)}\n\n"
 
     return StreamingResponse(
         token_generator(),
