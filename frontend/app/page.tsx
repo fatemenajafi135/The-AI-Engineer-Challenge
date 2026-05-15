@@ -285,12 +285,12 @@ export default function Home() {
     // ── HTML card serializer ───────────────────────────────────────────────────
     function cardToHtml(m: Message): string {
       const card = (emoji: string, title: string, rows: string) =>
-        `<div style="margin-top:10px;background:#26152D;border:1px solid #483550;border-radius:12px;padding:14px 16px;font-size:13px;line-height:1.6;">` +
-        `<div style="font-size:11px;font-weight:700;color:#9472B6;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">${emoji} ${title}</div>` +
+        `<div style="margin-top:10px;background:${COLORS.bgPage};border:1px solid ${COLORS.accentDim};border-radius:12px;padding:14px 16px;font-size:13px;line-height:1.6;">` +
+        `<div style="font-size:11px;font-weight:700;color:${COLORS.accent};text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">${emoji} ${title}</div>` +
         rows +
         `</div>`;
       const row = (label: string, value: string) =>
-        `<div style="margin-bottom:6px;"><span style="color:#6B7280;">${label}:</span> ${value}</div>`;
+        `<div style="margin-bottom:6px;"><span style="color:${COLORS.textSecondary};">${label}:</span> ${value}</div>`;
 
       if (m.breathingTool) {
         const t = m.breathingTool;
@@ -303,41 +303,41 @@ export default function Home() {
       if (m.reframeTool) {
         const r = m.reframeTool;
         return card("🔄", "Thought Reframe",
-          row("Original", `<em style="color:#9B9B9B;">${r.original_thought}</em>`) +
+          row("Original", `<em style="color:${COLORS.textMuted};">${r.original_thought}</em>`) +
           row("Reframe",  `<strong>${r.reframe}</strong>`)
         );
       }
       if (m.prepTool) {
         const p      = m.prepTool;
         const pairs  = p.worries.map((w, i) =>
-          `<li style="margin-bottom:4px;"><span style="color:#6B7280;">${w}</span>` +
-          ` <span style="color:#9472B6;">→</span> ${p.reframes[i] ?? ""}</li>`
+          `<li style="margin-bottom:4px;"><span style="color:${COLORS.textSecondary};">${w}</span>` +
+          ` <span style="color:${COLORS.accent};">→</span> ${p.reframes[i] ?? ""}</li>`
         ).join("");
         const anchors = p.anchors.map((a) =>
           `<li style="margin-bottom:4px;">${a}</li>`
         ).join("");
         return card("📋", `Prep — ${p.event_description}`,
-          `<div style="margin-bottom:6px;color:#6B7280;font-weight:600;">Worries &amp; Reframes:</div>` +
+          `<div style="margin-bottom:6px;color:${COLORS.textSecondary};font-weight:600;">Worries &amp; Reframes:</div>` +
           `<ul style="padding-left:16px;margin-bottom:10px;">${pairs}</ul>` +
-          `<div style="margin-bottom:6px;color:#6B7280;font-weight:600;">To-do anchors:</div>` +
+          `<div style="margin-bottom:6px;color:${COLORS.textSecondary};font-weight:600;">To-do anchors:</div>` +
           `<ul style="padding-left:16px;">${anchors}</ul>`
         );
       }
       if (m.supportTool && m.supportResults) {
         const sr      = m.supportResults;
         const crisis  = sr.crisis
-          ? `<div style="margin-bottom:10px;padding:8px 12px;background:rgba(148,114,182,.08);border-radius:8px;">` +
-            `<span style="color:#9472B6;font-weight:700;">🆘 Crisis:</span> ${sr.crisis.name}` +
+          ? `<div style="margin-bottom:10px;padding:8px 12px;background:${COLORS.accentOverlay08};border-radius:8px;">` +
+            `<span style="color:${COLORS.accent};font-weight:700;">🆘 Crisis:</span> ${sr.crisis.name}` +
             (sr.crisis.number ? ` — <strong>${sr.crisis.number}</strong>` : "") +
-            (sr.crisis.url    ? ` — <a href="${sr.crisis.url}" style="color:#9472B6;">${sr.crisis.url}</a>` : "") +
+            (sr.crisis.url    ? ` — <a href="${sr.crisis.url}" style="color:${COLORS.accent};">${sr.crisis.url}</a>` : "") +
             `</div>`
           : "";
         const results = sr.results.map((r) =>
-          `<div style="margin-bottom:10px;padding:8px 12px;border:1px solid #483550;border-radius:8px;">` +
+          `<div style="margin-bottom:10px;padding:8px 12px;border:1px solid ${COLORS.accentDim};border-radius:8px;">` +
           `<div style="font-weight:700;">${r.name}</div>` +
-          `<div style="font-size:12px;color:#6B7280;margin:2px 0;">${r.type} · ${r.format}</div>` +
+          `<div style="font-size:12px;color:${COLORS.textSecondary};margin:2px 0;">${r.type} · ${r.format}</div>` +
           `<div style="margin:4px 0;">${r.description}</div>` +
-          `<a href="${r.url}" style="color:#9472B6;font-size:12px;">${r.url}</a>` +
+          `<a href="${r.url}" style="color:${COLORS.accent};font-size:12px;">${r.url}</a>` +
           `</div>`
         ).join("");
         return card("🔍", `Support — ${sr.query.city}, ${sr.query.country}`,
@@ -407,16 +407,16 @@ export default function Home() {
         const time    = m.timestamp
           ? new Date(m.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
           : "";
-        const bg     = isUser ? "#9472B6" : "#483550";
+        const bg     = isUser ? COLORS.accent : COLORS.accentDim;
         const radius = isUser ? "18px 18px 4px 18px" : "18px 18px 18px 4px";
         const align  = isUser ? "flex-end" : "flex-start";
         const card   = cardToHtml(m);
         return (
           `<div style="display:flex;flex-direction:column;align-items:${align};margin-bottom:14px;">` +
-          `<div style="max-width:75%;background:${bg};color:#fff;padding:12px 16px;` +
+          `<div style="max-width:75%;background:${bg};color:${COLORS.textPrimary};padding:12px 16px;` +
           `border-radius:${radius};white-space:pre-wrap;line-height:1.6;font-size:15px;">` +
           `${esc(m.content)}${card}</div>` +
-          (time ? `<div style="font-size:11px;color:#6B7280;margin-top:4px;padding:0 4px;">${esc(speaker)} · ${time}</div>` : "") +
+          (time ? `<div style="font-size:11px;color:${COLORS.textSecondary};margin-top:4px;padding:0 4px;">${esc(speaker)} · ${time}</div>` : "") +
           `</div>`
         );
       }).join("\n");
@@ -429,12 +429,12 @@ export default function Home() {
   <title>Mental Coach — ${dateStr}</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    body{background:#26152D;color:#fff;font-family:system-ui,sans-serif;padding:32px 16px;min-height:100vh}
+    body{background:${COLORS.bgPage};color:${COLORS.textPrimary};font-family:system-ui,sans-serif;padding:32px 16px;min-height:100vh}
     .wrap{max-width:760px;margin:0 auto}
-    .hdr{background:#1A101E;border:1px solid #483550;border-radius:12px;padding:20px 24px;margin-bottom:24px}
+    .hdr{background:${COLORS.bgCard};border:1px solid ${COLORS.accentDim};border-radius:12px;padding:20px 24px;margin-bottom:24px}
     .hdr h1{font-size:22px;font-weight:700;margin-bottom:8px}
-    .meta{font-size:13px;color:#6B7280}
-    .meta b{color:#9472B6}
+    .meta{font-size:13px;color:${COLORS.textSecondary}}
+    .meta b{color:${COLORS.accent}}
   </style>
 </head>
 <body>

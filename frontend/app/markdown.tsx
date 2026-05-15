@@ -18,10 +18,10 @@ export const md: ComponentProps<typeof ReactMarkdown>["components"] = {
     className ? (
       <code style={{ fontFamily: MONO_FONT, fontSize: "13px" }}>{children}</code>
     ) : (
-      <code style={{ background: COLORS.shadowDark, padding: "1px 5px", borderRadius: "4px", fontFamily: MONO_FONT, fontSize: "0.875em" }}>{children}</code>
+      <code style={{ background: COLORS.bgCode, padding: "1px 5px", borderRadius: "4px", fontFamily: MONO_FONT, fontSize: "0.875em" }}>{children}</code>
     ),
   pre: ({ children }) => (
-    <pre style={{ background: COLORS.shadowDark, padding: "10px 12px", borderRadius: "8px", overflowX: "auto", whiteSpace: "pre-wrap", margin: "4px 0 6px 0", fontFamily: MONO_FONT, fontSize: "13px" }}>
+    <pre style={{ background: COLORS.bgCode, padding: "10px 12px", borderRadius: "8px", overflowX: "auto", whiteSpace: "pre-wrap", margin: "4px 0 6px 0", fontFamily: MONO_FONT, fontSize: "13px" }}>
       {children}
     </pre>
   ),

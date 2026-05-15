@@ -9,30 +9,37 @@
 // Named by role, not by hue — swap hex values here to retheme the entire app.
 
 export const COLORS = {
-  // Backgrounds
-  bgPrimary:      "#26152D",  // main page background
-  bgSurface:      "#1A101E",  // header, cards, input bar
+  // ── Backgrounds ──────────────────────────────────────────────────────────────
+  bgPage: "#26152D",          // page / body background; also the inset color for inputs inside dark cards
+  bgCard: "#1A101E",          // cards, panels, header, input bar (darker than bgPage — intentional "well" look)
+  bgCode: "rgba(0,0,0,0.35)", // inline code / code block surface (dark overlay on bgPage)
 
-  // Accents
-  accent:         "#9472B6",  // user bubbles, send button, links, active pills
-  accentDim:      "#483550",  // assistant bubbles, hover state, borders
+  // ── Accents ───────────────────────────────────────────────────────────────────
+  accent:    "#9472B6",       // user bubbles, send button, links, active pills
+  accentDim: "#483550",       // assistant bubbles, borders, disabled states
 
-  // Text
+  // ── Accent overlays (semi-transparent accent tints for surfaces & borders) ───
+  accentOverlay06: "rgba(148, 114, 182, 0.06)",  // very subtle tint  (crisis strip bg)
+  accentOverlay08: "rgba(148, 114, 182, 0.08)",  // subtle tint       (done-toast bg)
+  accentOverlay10: "rgba(148, 114, 182, 0.10)",  // mild tint         (pill / tag backgrounds)
+  accentOverlay15: "rgba(148, 114, 182, 0.15)",  // medium tint       (active tab bg)
+  accentOverlay18: "rgba(148, 114, 182, 0.18)",  // tinted border     (done-toast border)
+
+  // ── Text ─────────────────────────────────────────────────────────────────────
   textPrimary:    "#FFFFFF",
   textSecondary:  "#6B7280",  // muted labels, hints
   textMuted:      "#9B9B9B",  // blockquote text
   textAccentSoft: "#D1C4E9",  // em / italic in markdown
 
-  // Shadows & overlays (used inside boxShadow / background compound values)
+  // ── Shadows (used inside boxShadow values) ────────────────────────────────────
   shadowAccent:   "rgba(167, 139, 250, 0.1)",  // subtle indigo glow
   shadowAccentMd: "rgba(167, 139, 250, 0.2)",  // stronger glow (start button)
-  shadowDark:     "rgba(0,0,0,0.35)",           // code block background
-  shadowMedium:   "rgba(0,0,0,0.4)",            // scroll-to-bottom button
-  shadowHeavy:    "rgba(0,0,0,0.6)",            // panel overlays
+  shadowMedium:   "rgba(0,0,0,0.4)",           // scroll-to-bottom button
+  shadowHeavy:    "rgba(0,0,0,0.6)",           // panel / popup overlays
 
-  // Warning
-  warningText:    "#F59E0B",  // amber message text
-  warningBorder:  "#C97316",  // amber border
+  // ── Warning ───────────────────────────────────────────────────────────────────
+  warningText:   "#F59E0B",  // amber message text
+  warningBorder: "#C97316",  // amber border
 } as const;
 
 // ── API endpoints ─────────────────────────────────────────────────────────────
