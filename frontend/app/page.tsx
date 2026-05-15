@@ -105,6 +105,9 @@ export default function Home() {
   // Warning state: holds the pending message text when limit is reached
   const [limitWarning, setLimitWarning] = useState<string | null>(null);
 
+  const [showInfoPanel, setShowInfoPanel] = useState(false);
+  const [sessionStart, setSessionStart] = useState<number | null>(null);
+
   const bottomRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -113,21 +116,22 @@ export default function Home() {
   // Restore full session from localStorage on mount
   useEffect(() => {
     const savedName        = localStorage.getItem("mc_userName");
-    const savedCoach       = localStorage.getItem("mc_coach");
-    const savedMessages    = localStorage.getItem("mc_messages");
-    const savedApiKey      = localStorage.getItem("mc_apiKey");
-    const savedModel       = localStorage.getItem("mc_model");
-    const savedTemperature = localStorage.getItem("mc_temperature");
-    const savedMaxTokens   = localStorage.getItem("mc_maxTokens");
+    const savedCoach        = localStorage.getItem("mc_coach");
+    const savedMessages     = localStorage.getItem("mc_messages");
+    const savedApiKey       = localStorage.getItem("mc_apiKey");
+    const savedModel        = localStorage.getItem("mc_model");
+    const savedTemperature  = localStorage.getItem("mc_temperature");
+    const savedMaxTokens    = localStorage.getItem("mc_maxTokens");
+    const savedLimit        = localStorage.getItem("mc_messageLimit");
+    const savedSessionStart = localStorage.getItem("mc_sessionStart");
 
-    const savedLimit       = localStorage.getItem("mc_messageLimit");
-
-    if (savedCoach)       setCoach(savedCoach);
-    if (savedApiKey)      setApiKey(savedApiKey);
-    if (savedModel)       setModel(savedModel);
-    if (savedTemperature) setTemperature(parseFloat(savedTemperature));
-    if (savedMaxTokens)   setMaxTokens(parseInt(savedMaxTokens));
-    if (savedLimit)       setMessageLimit(parseInt(savedLimit));
+    if (savedCoach)        setCoach(savedCoach);
+    if (savedApiKey)       setApiKey(savedApiKey);
+    if (savedModel)        setModel(savedModel);
+    if (savedTemperature)  setTemperature(parseFloat(savedTemperature));
+    if (savedMaxTokens)    setMaxTokens(parseInt(savedMaxTokens));
+    if (savedLimit)        setMessageLimit(parseInt(savedLimit));
+    if (savedSessionStart) setSessionStart(parseInt(savedSessionStart));
 
     if (savedName) {
       setUserName(savedName);
@@ -190,10 +194,14 @@ export default function Home() {
     localStorage.setItem("mc_maxTokens",    String(maxTokens));
     localStorage.setItem("mc_messageLimit", String(messageLimit));
 
+    const now = Date.now();
+    localStorage.setItem("mc_sessionStart", String(now));
+    setSessionStart(now);
+
     setMessages([{
       role: "assistant",
       content: `Hi ${name}! I'm your mental wellness coach — here to support you with stress, motivation, habits, and confidence. What's on your mind today?`,
-      timestamp: Date.now(),
+      timestamp: now,
     }]);
     setPhase("chat");
   }
@@ -202,6 +210,7 @@ export default function Home() {
     [
       "mc_userName", "mc_coach", "mc_messages", "mc_tone", "mc_persona",
       "mc_apiKey", "mc_model", "mc_temperature", "mc_maxTokens", "mc_messageLimit",
+      "mc_sessionStart",
     ].forEach((k) => localStorage.removeItem(k));
     setUserName("");
     setCoach("challenger");
@@ -211,6 +220,8 @@ export default function Home() {
     setMaxTokens(1024);
     setMessageLimit(20);
     setLimitWarning(null);
+    setSessionStart(null);
+    setShowInfoPanel(false);
     setMessages([]);
     setPhase("landing");
   }
@@ -552,6 +563,19 @@ export default function Home() {
   // ── Chat ────────────────────────────────────────────────────────────────────
   const coachName = COACH_OPTIONS.find((o) => o.value === coach)?.name ?? "Your Coach";
 
+  const sessionTotals = messages.reduce(
+    (acc, msg) => {
+      if (msg.usage) {
+        acc.promptTokens     += msg.usage.prompt_tokens;
+        acc.completionTokens += msg.usage.completion_tokens;
+        acc.totalTokens      += msg.usage.total_tokens;
+        acc.cost             += msg.usage.cost ?? 0;
+      }
+      return acc;
+    },
+    { promptTokens: 0, completionTokens: 0, totalTokens: 0, cost: 0 },
+  );
+
   return (
     <div style={styles.chatContainer}>
       <header style={styles.header}>
@@ -560,11 +584,79 @@ export default function Home() {
             <h1 style={styles.headerTitle}>🌿 Mental Coach</h1>
             <p style={styles.headerSubtitle}>{userName} · {coachName} · {model}</p>
           </div>
-          <button style={styles.newSessionButton} onClick={clearSession}>
-            New session
-          </button>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            <button
+              style={styles.infoButton}
+              onClick={() => setShowInfoPanel((v) => !v)}
+              aria-label="Session info"
+            >
+              🛈
+            </button>
+            <button style={styles.newSessionButton} onClick={clearSession}>
+              New session
+            </button>
+          </div>
         </div>
       </header>
+
+      {showInfoPanel && (
+        <div style={styles.infoPanel}>
+          <p style={styles.infoPanelTitle}>Session Info</p>
+
+          <div style={styles.infoSection}>
+            <div style={styles.infoRow}>
+              <span style={styles.infoLabel}>Model</span>
+              <span style={styles.infoValue}>{model}</span>
+            </div>
+            <div style={styles.infoRow}>
+              <span style={styles.infoLabel}>Coach</span>
+              <span style={styles.infoValue}>{coachName}</span>
+            </div>
+            {sessionStart && (
+              <div style={styles.infoRow}>
+                <span style={styles.infoLabel}>Started</span>
+                <span style={styles.infoValue}>
+                  {new Date(sessionStart).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div style={styles.infoDivider} />
+
+          <div style={styles.infoSection}>
+            <p style={styles.infoSectionTitle}>Token usage</p>
+            <div style={styles.infoRow}>
+              <span style={styles.infoLabel}>Prompt</span>
+              <span style={styles.infoValue}>{sessionTotals.promptTokens.toLocaleString()}</span>
+            </div>
+            <div style={styles.infoRow}>
+              <span style={styles.infoLabel}>Completion</span>
+              <span style={styles.infoValue}>{sessionTotals.completionTokens.toLocaleString()}</span>
+            </div>
+            <div style={styles.infoRow}>
+              <span style={{ ...styles.infoLabel, color: "#FFFFFF", fontWeight: 600 }}>Total</span>
+              <span style={{ ...styles.infoValue, color: "#FFFFFF", fontWeight: 600 }}>{sessionTotals.totalTokens.toLocaleString()}</span>
+            </div>
+          </div>
+
+          <div style={styles.infoDivider} />
+
+          <div style={styles.infoSection}>
+            <p style={styles.infoSectionTitle}>Estimated cost</p>
+            <div style={styles.infoRow}>
+              <span style={styles.infoLabel}>This session</span>
+              <span style={{ ...styles.infoValue, color: "#9472B6", fontWeight: 600 }}>
+                {sessionTotals.totalTokens === 0
+                  ? "—"
+                  : sessionTotals.cost === 0
+                  ? "N/A"
+                  : `$${sessionTotals.cost < 0.0001 ? sessionTotals.cost.toFixed(6) : sessionTotals.cost.toFixed(4)}`}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div style={styles.messageListWrapper}>
         {showScrollBtn && (
@@ -854,6 +946,7 @@ const styles: Record<string, React.CSSProperties> = {
     maxWidth: "760px",
     margin: "0 auto",
     width: "100%",
+    position: "relative",
   },
   header: {
     padding: "20px 24px 16px",
@@ -874,6 +967,69 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "13px",
     cursor: "pointer",
     transition: "all 200ms ease",
+  },
+  infoButton: {
+    padding: "6px 10px",
+    borderRadius: "8px",
+    border: "1px solid #483550",
+    background: "transparent",
+    color: "#9472B6",
+    fontSize: "16px",
+    cursor: "pointer",
+    lineHeight: "1",
+    transition: "all 200ms ease",
+  },
+  infoPanel: {
+    position: "absolute",
+    top: "72px",
+    right: "16px",
+    width: "260px",
+    background: "#1A101E",
+    border: "1px solid #483550",
+    borderRadius: "12px",
+    padding: "16px",
+    boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
+    zIndex: 100,
+    display: "flex",
+    flexDirection: "column",
+    gap: "12px",
+  },
+  infoPanelTitle: {
+    fontSize: "13px",
+    fontWeight: 700,
+    color: "#FFFFFF",
+    margin: 0,
+  },
+  infoSection: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "8px",
+  },
+  infoSectionTitle: {
+    fontSize: "10px",
+    fontWeight: 600,
+    color: "#6B7280",
+    textTransform: "uppercase" as const,
+    letterSpacing: "0.08em",
+    margin: 0,
+  },
+  infoRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  infoLabel: {
+    fontSize: "13px",
+    color: "#6B7280",
+  },
+  infoValue: {
+    fontSize: "13px",
+    color: "#FFFFFF",
+    fontFamily: "'JetBrains Mono', monospace",
+  },
+  infoDivider: {
+    height: "1px",
+    background: "#483550",
   },
 
   messageListWrapper: {
