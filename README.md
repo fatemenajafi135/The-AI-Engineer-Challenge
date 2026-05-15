@@ -680,13 +680,47 @@ Then rerun your vibe check and document:
 
 ---
 
-**Adjustments Made:**  
-<!-- Describe what you changed -->
+### **Adjustments Made:**
 
-**Results:**  
-<!-- What improved? What didn’t? -->
+Basically rebuilt the whole experience from the ground up. Here's what landed in v0.2.0:
+
+🔑 **You're the boss now**: 
+Bring your own OpenAI API key — typed into a password field, stored only in your browser, never touches our servers. Pick your model, tune temperature and max tokens, and set your own message limit. Full control, no surprises.
+
+🎭 **Six coaches, six vibes**: 
+Choose from The Fixer, The Hype Man, The Anchor, The Challenger, The Wingman, or The Philosopher. Each has a distinct system prompt that actually shapes how the AI responds — not just the greeting, but the whole energy of the conversation.
+
+🧠 **Memory that doesn't goldfish**: 
+The app maintains a sliding conversation window and summarizes older messages via LLM before they drop off — so your coach remembers what you said 30 messages ago, not just the last five.
+
+✨ **Smoother feel**:
+Streaming responses with a live cursor so you watch the answer form in real time. Markdown rendering so responses actually look good (lists, bold, code blocks, headers). Timestamps on every message, auto-resizing input, and a jump-to-bottom button when you scroll up mid-session.
+
+**💸 Know what you're spending**:
+Per-message token tracking with estimated cost, rolled into a live session total in the info panel. Covers all major OpenAI models with real pricing. No guessing!
+
+**🛡️ Less fragile under the hood**: 
+Retry with exponential backoff on transient API errors, prompt injection guards on the backend, and actual error messages in the UI instead of silent failures. 
+
+### **Results:** *v0.2.0*
+
+Three real pain points from the vibe check are gone:
+
+- **Memory was completely broken** — the bot literally couldn't recall anything said earlier in the same session. Now it maintains a sliding window with LLM summarization, so long sessions stay coherent and survive page reloads.
+- **No idea who you were** — now it knows your name, coach, and settings from the moment the chat opens.
+- **Plain text walls** — markdown rendering makes structured responses actually readable.
+- The persona system is a genuine differentiator. The Challenger and The Anchor are night-and-day different to talk to.
+
+Still open:
+- No web search, no real-time data
+- No calendar access or action execution
+- No cross-session memory — "New Session" still starts completely fresh
+- No knowledge base — everything comes from training data and what you share in the chat
+
+Continuity is kind of the whole point of a coaching tool, so these gaps matter. They're on the roadmap. ✈️
 
 ---
+
 
 ## 📦 Submission Instructions
 
