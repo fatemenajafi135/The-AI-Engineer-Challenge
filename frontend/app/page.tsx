@@ -50,6 +50,7 @@ export default function Home() {
   // Warning state: holds the pending message text when limit is reached
   const [limitWarning, setLimitWarning] = useState<string | null>(null);
 
+  const [showNewSessionConfirm, setShowNewSessionConfirm] = useState(false);
   const [showInfoPanel, setShowInfoPanel] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showToolsPanel, setShowToolsPanel] = useState(false);
@@ -62,9 +63,10 @@ export default function Home() {
   const listRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
-  const infoPanelRef = useRef<HTMLDivElement>(null);
-  const exportMenuRef = useRef<HTMLDivElement>(null);
-  const toolsPanelRef = useRef<HTMLDivElement>(null);
+  const infoPanelRef        = useRef<HTMLDivElement>(null);
+  const exportMenuRef       = useRef<HTMLDivElement>(null);
+  const toolsPanelRef       = useRef<HTMLDivElement>(null);
+  const newSessionPanelRef  = useRef<HTMLDivElement>(null);
 
   // Restore full session from localStorage on mount
   useEffect(() => {
@@ -161,6 +163,17 @@ export default function Home() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showToolsPanel]);
+
+  useEffect(() => {
+    if (!showNewSessionConfirm) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (newSessionPanelRef.current && !newSessionPanelRef.current.contains(e.target as Node)) {
+        setShowNewSessionConfirm(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showNewSessionConfirm]);
 
   useEffect(() => {
     if (!streaming) { setTypingFrame(0); return; }
@@ -971,12 +984,36 @@ ${bubblesHtml}
             >
               🛈
             </button>
-            <button className="header-btn" style={styles.newSessionButton} onClick={clearSession}>
+            <button
+              className="header-btn"
+              style={styles.newSessionButton}
+              onClick={() => { setShowNewSessionConfirm((v) => !v); setShowInfoPanel(false); setShowExportMenu(false); setShowToolsPanel(false); }}
+            >
               New session
             </button>
           </div>
         </div>
       </header>
+
+      {showNewSessionConfirm && (
+        <div ref={newSessionPanelRef} style={styles.infoPanel}>
+          <p style={styles.infoPanelTitle}>Start a new session?</p>
+          <div style={styles.infoDivider} />
+          <div style={styles.infoSection}>
+            <p style={{ fontSize: "13px", color: COLORS.textSecondary, lineHeight: "1.5" }}>
+              All messages and session info will be cleared.
+            </p>
+            <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: "4px" }}>
+              <button style={styles.limitCancelBtn} onClick={() => setShowNewSessionConfirm(false)}>
+                Cancel
+              </button>
+              <button style={styles.limitConfirmBtn} onClick={() => { setShowNewSessionConfirm(false); clearSession(); }}>
+                Start fresh
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showToolsPanel && (
         <div ref={toolsPanelRef} style={styles.infoPanel}>
