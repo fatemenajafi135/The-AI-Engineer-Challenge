@@ -9,6 +9,7 @@ import {
   COACH_OPTIONS,
   COLORS,
   MODEL_OPTIONS,
+  PALETTES,
   DEFAULT_MODEL,
   DEFAULT_TEMPERATURE,
   DEFAULT_MAX_TOKENS,
@@ -57,6 +58,8 @@ export default function Home() {
   const [showInfoPanel, setShowInfoPanel] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showToolsPanel, setShowToolsPanel] = useState(false);
+  const [showSettingsPanel, setShowSettingsPanel] = useState(false);
+  const [paletteKey, setPaletteKey] = useState("default");
   const [sessionStart, setSessionStart] = useState<number | null>(null);
   const [typingFrame, setTypingFrame] = useState(0);
 
@@ -70,6 +73,7 @@ export default function Home() {
   const exportMenuRef       = useRef<HTMLDivElement>(null);
   const toolsPanelRef       = useRef<HTMLDivElement>(null);
   const newSessionPanelRef  = useRef<HTMLDivElement>(null);
+  const settingsPanelRef    = useRef<HTMLDivElement>(null);
 
   // Restore full session from localStorage on mount
   useEffect(() => {
@@ -90,6 +94,11 @@ export default function Home() {
     if (savedMaxTokens)    { const v = parseInt(savedMaxTokens);    if (!isNaN(v)) setMaxTokens(v); }
     if (savedLimit)        { const v = parseInt(savedLimit);        if (!isNaN(v)) setMessageLimit(v); }
     if (savedSessionStart) { const v = parseInt(savedSessionStart); if (!isNaN(v)) setSessionStart(v); }
+
+    const savedPalette = localStorage.getItem(LS_KEYS.palette);
+    if (savedPalette && PALETTES.some((p) => p.key === savedPalette)) {
+      setPaletteKey(savedPalette);
+    }
 
     if (savedName) {
       setUserName(savedName);
@@ -177,6 +186,32 @@ export default function Home() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showNewSessionConfirm]);
+
+  // Apply palette CSS vars whenever the selected palette changes.
+  // Updating document.documentElement style properties is enough — React inline
+  // styles that use var(--accent) etc. repaint automatically without a re-render.
+  useEffect(() => {
+    const palette = PALETTES.find((p) => p.key === paletteKey);
+    if (!palette) return;
+    const root = document.documentElement;
+    root.style.setProperty("--bg-page",    palette.bgPage);
+    root.style.setProperty("--bg-card",    palette.bgCard);
+    root.style.setProperty("--accent",     palette.accent);
+    root.style.setProperty("--accent-dim", palette.accentDim);
+    root.style.setProperty("--accent-rgb", palette.accentRgb);
+    localStorage.setItem(LS_KEYS.palette, paletteKey);
+  }, [paletteKey]);
+
+  useEffect(() => {
+    if (!showSettingsPanel) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (settingsPanelRef.current && !settingsPanelRef.current.contains(e.target as Node)) {
+        setShowSettingsPanel(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showSettingsPanel]);
 
   useEffect(() => {
     if (!streaming) { setTypingFrame(0); return; }
@@ -847,7 +882,7 @@ ${bubblesHtml}
                         id="api-key-input"
                         style={{
                           ...styles.apiKeyInput,
-                          borderColor: apiKeyStatus === "valid"   ? COLORS.accent
+                          borderColor: apiKeyStatus === "valid"   ? "var(--accent)"
                                      : apiKeyStatus === "invalid" ? COLORS.warningBorder
                                      : undefined,
                         }}
@@ -876,7 +911,7 @@ ${bubblesHtml}
                       <p style={{ ...styles.formHint, color: COLORS.textSecondary }}>Verifying…</p>
                     )}
                     {apiKeyStatus === "valid" && (
-                      <p style={{ ...styles.formHint, color: COLORS.accent }}>✓ Key accepted</p>
+                      <p style={{ ...styles.formHint, color: "var(--accent)" }}>✓ Key accepted</p>
                     )}
                     {apiKeyStatus === "invalid" && (
                       <p style={{ ...styles.formHint, color: COLORS.warningText }}>{apiKeyError}</p>
@@ -1012,7 +1047,7 @@ ${bubblesHtml}
             <button
               className="header-btn"
               style={styles.infoButton}
-              onClick={() => { setShowToolsPanel((v) => !v); setShowInfoPanel(false); setShowExportMenu(false); }}
+              onClick={() => { setShowToolsPanel((v) => !v); setShowInfoPanel(false); setShowExportMenu(false); setShowSettingsPanel(false); }}
               aria-label="Available tools"
               title="Available tools"
             >
@@ -1021,7 +1056,7 @@ ${bubblesHtml}
             <button
               className="header-btn"
               style={styles.infoButton}
-              onClick={() => { setShowExportMenu((v) => !v); setShowInfoPanel(false); setShowToolsPanel(false); }}
+              onClick={() => { setShowExportMenu((v) => !v); setShowInfoPanel(false); setShowToolsPanel(false); setShowSettingsPanel(false); }}
               aria-label="Export session"
               title="Export session"
             >
@@ -1030,15 +1065,24 @@ ${bubblesHtml}
             <button
               className="header-btn"
               style={styles.infoButton}
-              onClick={() => { setShowInfoPanel((v) => !v); setShowExportMenu(false); setShowToolsPanel(false); }}
+              onClick={() => { setShowInfoPanel((v) => !v); setShowExportMenu(false); setShowToolsPanel(false); setShowSettingsPanel(false); }}
               aria-label="Session info"
             >
               🛈
             </button>
             <button
               className="header-btn"
+              style={styles.infoButton}
+              onClick={() => { setShowSettingsPanel((v) => !v); setShowInfoPanel(false); setShowExportMenu(false); setShowToolsPanel(false); }}
+              aria-label="Settings"
+              title="Settings"
+            >
+              ⚙
+            </button>
+            <button
+              className="header-btn"
               style={styles.newSessionButton}
-              onClick={() => { setShowNewSessionConfirm((v) => !v); setShowInfoPanel(false); setShowExportMenu(false); setShowToolsPanel(false); }}
+              onClick={() => { setShowNewSessionConfirm((v) => !v); setShowInfoPanel(false); setShowExportMenu(false); setShowToolsPanel(false); setShowSettingsPanel(false); }}
             >
               New session
             </button>
@@ -1080,6 +1124,55 @@ ${bubblesHtml}
               <div key={tool} style={styles.infoRow}>
                 <span style={styles.infoLabel}>{tool}</span>
               </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {showSettingsPanel && (
+        <div ref={settingsPanelRef} style={styles.infoPanel}>
+          <p style={styles.infoPanelTitle}>Color Palette</p>
+          <div style={styles.infoDivider} />
+          <div style={styles.infoSection}>
+            {PALETTES.map((palette) => (
+              <label
+                key={palette.key}
+                style={{
+                  display:     "flex",
+                  alignItems:  "center",
+                  gap:         "10px",
+                  cursor:      "pointer",
+                  padding:     "5px 0",
+                }}
+              >
+                <input
+                  type="radio"
+                  name="palette"
+                  value={palette.key}
+                  checked={paletteKey === palette.key}
+                  onChange={() => setPaletteKey(palette.key)}
+                  style={{ accentColor: "var(--accent)", cursor: "pointer", flexShrink: 0 }}
+                />
+                <span style={{ fontSize: "13px", color: COLORS.textSecondary, flex: 1 }}>
+                  {palette.name}
+                </span>
+                {/* Four swatches: bgPage, bgCard, accentDim, accent */}
+                <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
+                  {[palette.bgPage, palette.bgCard, palette.accentDim, palette.accent].map((color, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        width:        "14px",
+                        height:       "14px",
+                        borderRadius: "3px",
+                        background:   color,
+                        border:       "1px solid rgba(255,255,255,0.18)",
+                        flexShrink:   0,
+                      }}
+                    />
+                  ))}
+                </div>
+              </label>
             ))}
           </div>
         </div>
@@ -1157,7 +1250,7 @@ ${bubblesHtml}
             <p style={styles.infoSectionTitle}>Estimated cost</p>
             <div style={styles.infoRow}>
               <span style={styles.infoLabel}>This session</span>
-              <span style={{ ...styles.infoValue, color: COLORS.accent, fontWeight: 600 }}>
+              <span style={{ ...styles.infoValue, color: "var(--accent)", fontWeight: 600 }}>
                 {sessionTotals.totalTokens === 0
                   ? "—"
                   : sessionTotals.cost === 0

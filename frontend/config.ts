@@ -79,7 +79,62 @@ export const LS_KEYS = {
   maxTokens:    "mc_maxTokens",
   messageLimit: "mc_messageLimit",
   sessionStart: "mc_sessionStart",
+  palette:      "mc_palette",
 } as const;
+
+// ── Color palettes ────────────────────────────────────────────────────────────
+// Each palette drives the five CSS custom properties that theme the entire UI.
+// accentRgb must be the R,G,B triple of accent (no spaces after commas) so that
+// rgba(var(--accent-rgb), 0.xx) works correctly in CSS.
+
+export type Palette = {
+  key:       string;
+  name:      string;
+  bgPage:    string;
+  bgCard:    string;
+  accent:    string;
+  accentDim: string;
+  accentRgb: string;
+};
+
+export const PALETTES: Palette[] = [
+  {
+    key:       "default",
+    name:      "Indigo Night",
+    bgPage:    "#26152D",
+    bgCard:    "#1A101E",
+    accent:    "#9472B6",
+    accentDim: "#483550",
+    accentRgb: "148, 114, 182",
+  },
+  {
+    key:       "ocean",
+    name:      "Deep Ocean",
+    bgPage:    "#0C1929",
+    bgCard:    "#071120",
+    accent:    "#4DA6C8",
+    accentDim: "#1C3E55",
+    accentRgb: "77, 166, 200",
+  },
+  {
+    key:       "forest",
+    name:      "Forest",
+    bgPage:    "#0E1F12",
+    bgCard:    "#08130A",
+    accent:    "#52A876",
+    accentDim: "#1E4730",
+    accentRgb: "82, 168, 118",
+  },
+  {
+    key:       "ember",
+    name:      "Ember",
+    bgPage:    "#1D0F09",
+    bgCard:    "#130A07",
+    accent:    "#D4735A",
+    accentDim: "#5C2A1E",
+    accentRgb: "212, 115, 90",
+  },
+];
 
 // ── Coach definitions ─────────────────────────────────────────────────────────
 

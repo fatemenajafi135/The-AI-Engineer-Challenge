@@ -105,7 +105,7 @@ export function PrepWidget({ tool }: { tool: PrepTool }) {
                 type="checkbox"
                 checked={checked}
                 readOnly
-                style={{ accentColor: "#9472B6", cursor: "pointer", flexShrink: 0 }}
+                style={{ accentColor: "var(--accent)", cursor: "pointer", flexShrink: 0 }}
               />
               <span
                 style={{
