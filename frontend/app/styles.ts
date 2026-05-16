@@ -782,6 +782,14 @@ export const styles: Record<string, CSSProperties> = {
     display: "flex",
     justifyContent: "flex-end",
   },
+  prepGoodLuck: {
+    padding: "12px 20px",
+    fontSize: "13px",
+    color: C.accent,
+    textAlign: "center" as const,
+    fontWeight: 600,
+    letterSpacing: "0.02em",
+  },
   prepSaveBtn: {
     padding: "7px 18px",
     borderRadius: "10px",

@@ -41,6 +41,17 @@ const TONE_LABELS: Record<"direct" | "gentle" | "written", string> = {
   written: "Written",
 };
 
+// Situations where "good luck" / "break a leg" is socially appropriate.
+// Excluded: hard_conversation (emotional, not luck-based), medical (insensitive),
+// other (too generic).
+const GOOD_LUCK_SITUATIONS: Set<PrepTool["situation_type"]> = new Set([
+  "interview",
+  "presentation",
+  "exam",
+  "first_date",
+  "performance_review",
+]);
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function PrepWidget({ tool }: { tool: PrepTool }) {
@@ -49,7 +60,8 @@ export function PrepWidget({ tool }: { tool: PrepTool }) {
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
 
-  const hasScripts = tool.scripts && tool.scripts.length > 0;
+  const hasScripts   = tool.scripts && tool.scripts.length > 0;
+  const showGoodLuck = GOOD_LUCK_SITUATIONS.has(tool.situation_type);
 
   function toggleAnchor(i: number) {
     setCheckedAnchors((prev) =>
@@ -146,6 +158,12 @@ export function PrepWidget({ tool }: { tool: PrepTool }) {
         </div>
       )}
 
+      {/* Good luck — only for situations where it socially makes sense */}
+      {showGoodLuck && (
+        <div style={styles.prepGoodLuck}>
+          You&apos;ve got this — good luck 🍀
+        </div>
+      )}
 
 </div>
   );
