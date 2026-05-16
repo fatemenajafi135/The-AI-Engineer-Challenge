@@ -7,8 +7,9 @@
   --accent:       #9472B6;               /* primary accent */
   --accent-dim:   #483550;               /* borders, assistant bubbles, disabled */
   --accent-rgb:   148, 114, 182;         /* accent as R,G,B for rgba() usage */
-  --text-primary: #FFFFFF;
-  --mono-font:    'JetBrains Mono', monospace;
+  --text-primary:    #FFFFFF;
+  --text-secondary:  #6B7280;
+  --mono-font:       'JetBrains Mono', monospace;
 }
 
 * {
@@ -61,4 +62,18 @@ code, pre {
 
 .header-btn:hover {
   background: rgba(var(--accent-rgb), 0.12) !important;
+}
+
+/* Support widget — bouncing dots loading indicator */
+@keyframes bounce-dot {
+  0%, 100% { transform: translateY(0); }
+  45%       { transform: translateY(-7px); }
+}
+.bounce-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  animation: bounce-dot 0.9s ease-in-out infinite;
 }

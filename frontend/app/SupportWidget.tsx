@@ -186,7 +186,11 @@ export function SupportWidget({
       <div style={styles.supportCard}>
         <div style={styles.supportLoadingWrap}>
           <span style={styles.supportLoadingText}>Searching for support near {city}, {country}…</span>
-          <span style={styles.typingDots}><span>●</span><span>●</span><span>●</span></span>
+          <div style={styles.supportBounceDots}>
+            <span className="bounce-dot" style={{ animationDelay: "0s" }}    />
+            <span className="bounce-dot" style={{ animationDelay: "0.15s" }} />
+            <span className="bounce-dot" style={{ animationDelay: "0.30s" }} />
+          </div>
         </div>
       </div>
     );

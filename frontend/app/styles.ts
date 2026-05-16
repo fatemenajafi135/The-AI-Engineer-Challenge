@@ -875,6 +875,13 @@ export const styles: Record<string, CSSProperties> = {
     textAlign: "center" as const,
     lineHeight: "1.5",
   },
+  supportBounceDots: {
+    display: "flex",
+    gap: "6px",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: "4px",
+  },
 
   // Stage: error
   supportErrorWrap: {
