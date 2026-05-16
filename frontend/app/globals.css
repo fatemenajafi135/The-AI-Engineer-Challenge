@@ -64,6 +64,26 @@ code, pre {
   background: rgba(var(--accent-rgb), 0.12) !important;
 }
 
+/* Header button row — always right-aligned. width: 100% on narrow screens
+   keeps the row pinned to the right edge of the header even after it wraps
+   below the title (space-between left-pins a single wrapped flex child otherwise). */
+.header-btn-row {
+  justify-content: flex-end;
+}
+@media (max-width: 570px) {
+  .header-btn-row {
+    width: 100%;
+  }
+}
+
+/* Keyboard hint below the message input — hidden on narrow screens where it
+   would crowd the layout. Placeholder stays short in both cases. */
+@media (max-width: 480px) {
+  .input-hint {
+    display: none;
+  }
+}
+
 /* Support widget — bouncing dots loading indicator */
 @keyframes bounce-dot {
   0%, 100% { transform: translateY(0); }

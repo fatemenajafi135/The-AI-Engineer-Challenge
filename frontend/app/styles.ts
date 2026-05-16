@@ -212,15 +212,49 @@ export const styles: Record<string, CSSProperties> = {
     background: C.bgPage,
   },
   header: {
+    position: "relative" as const,  // anchor for popups so they sit right below the actual header height
     padding: "20px 24px 16px",
     borderBottom: `1px solid ${C.accentDim}`,
     background: C.bgCard,
     borderRadius: "0 0 12px 12px",
     boxShadow: `0 4px 24px ${C.shadowAccent}`,
   },
-  headerRow:      { display: "flex", alignItems: "center", justifyContent: "space-between" },
-  headerTitle:    { fontSize: "22px", fontWeight: 700, color: COLORS.textPrimary },
+  headerRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "12px",
+    flexWrap: "wrap" as const,  // buttons drop to a new line on narrow screens
+  },
+  headerTitleWrap: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    minWidth: 0,                // allows the text column to shrink instead of forcing overflow
+  },
+  headerLeaf: {
+    fontSize: "32px",
+    lineHeight: "1",
+    flexShrink: 0,
+  },
+  headerTitleCol: {
+    display: "flex",
+    flexDirection: "column" as const,
+    minWidth: 0,
+  },
+  headerTitle:    { fontSize: "22px", fontWeight: 700, color: COLORS.textPrimary, lineHeight: "1.1" },
   headerSubtitle: { fontSize: "13px", color: COLORS.textSecondary, marginTop: "2px" },
+  // wrap-reverse: when the row can't hold everything, the EARLIEST items in
+  // source order overflow upward to a previous row. Since "New session" is
+  // last in the JSX, it always anchors the bottom row alongside as many icons
+  // as still fit. Alignment lives in globals.css under .header-btn-row so the
+  // narrow-screen width override can win against the inline style.
+  headerButtonRow: {
+    display: "flex",
+    gap: "8px",
+    alignItems: "center",
+    flexWrap: "wrap-reverse" as const,
+  },
   newSessionButton: {
     padding: "7px 14px",
     borderRadius: "8px",
@@ -248,8 +282,8 @@ export const styles: Record<string, CSSProperties> = {
   // ── Session info panel ────────────────────────────────────────────────────
   infoPanel: {
     position: "absolute",
-    top: "72px",
-    right: "16px",
+    top: "calc(100% - 8px)",   // sits just below the header but overlaps slightly so the panel feels attached
+    right: "40px",             // shifted left so the panel's right edge lands among the icon buttons, not flush to the corner
     width: "260px",
     background: C.bgCard,
     border: `1px solid ${C.accentDim}`,
@@ -365,13 +399,24 @@ export const styles: Record<string, CSSProperties> = {
   // ── Input bar ─────────────────────────────────────────────────────────────
   inputArea: {
     display: "flex",
-    gap: "10px",
+    flexDirection: "column" as const,
+    gap: "6px",
     padding: "16px",
     borderTop: `1px solid ${C.accentDim}`,
     background: C.bgCard,
-    alignItems: "flex-end",
     borderRadius: "12px 12px 0 0",
     boxShadow: `0 4px 24px ${C.shadowAccent}`,
+  },
+  inputRow: {
+    display: "flex",
+    gap: "10px",
+    alignItems: "flex-end",
+  },
+  inputHint: {
+    fontSize: "11px",
+    color: COLORS.textSecondary,
+    textAlign: "center" as const,
+    margin: 0,
   },
   textarea: {
     flex: 1,
