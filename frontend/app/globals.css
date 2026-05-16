@@ -76,6 +76,14 @@ code, pre {
   }
 }
 
+/* Keyboard hint below the message input — hidden on narrow screens where it
+   would crowd the layout. Placeholder stays short in both cases. */
+@media (max-width: 480px) {
+  .input-hint {
+    display: none;
+  }
+}
+
 /* Support widget — bouncing dots loading indicator */
 @keyframes bounce-dot {
   0%, 100% { transform: translateY(0); }

@@ -398,13 +398,24 @@ export const styles: Record<string, CSSProperties> = {
   // ── Input bar ─────────────────────────────────────────────────────────────
   inputArea: {
     display: "flex",
-    gap: "10px",
+    flexDirection: "column" as const,
+    gap: "6px",
     padding: "16px",
     borderTop: `1px solid ${C.accentDim}`,
     background: C.bgCard,
-    alignItems: "flex-end",
     borderRadius: "12px 12px 0 0",
     boxShadow: `0 4px 24px ${C.shadowAccent}`,
+  },
+  inputRow: {
+    display: "flex",
+    gap: "10px",
+    alignItems: "flex-end",
+  },
+  inputHint: {
+    fontSize: "11px",
+    color: COLORS.textSecondary,
+    textAlign: "center" as const,
+    margin: 0,
   },
   textarea: {
     flex: 1,

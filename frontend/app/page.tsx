@@ -1379,23 +1379,28 @@ ${bubblesHtml}
       })()}
 
       <div style={styles.inputArea}>
-        <textarea
-          ref={textareaRef}
-          style={styles.textarea}
-          value={input}
-          onChange={handleTextareaChange}
-          onKeyDown={handleKeyDown}
-          placeholder="Share what's on your mind… (Enter to send, Shift+Enter for new line)"
-          rows={1}
-          disabled={streaming}
-        />
-        <button
-          style={{ ...styles.sendButton, ...(streaming || !input.trim() ? styles.sendButtonDisabled : {}) }}
-          onClick={sendMessage}
-          disabled={streaming || !input.trim()}
-        >
-          Send
-        </button>
+        <div style={styles.inputRow}>
+          <textarea
+            ref={textareaRef}
+            style={styles.textarea}
+            value={input}
+            onChange={handleTextareaChange}
+            onKeyDown={handleKeyDown}
+            placeholder="What's on your mind…"
+            rows={1}
+            disabled={streaming}
+          />
+          <button
+            style={{ ...styles.sendButton, ...(streaming || !input.trim() ? styles.sendButtonDisabled : {}) }}
+            onClick={sendMessage}
+            disabled={streaming || !input.trim()}
+          >
+            Send
+          </button>
+        </div>
+        <p className="input-hint" style={styles.inputHint}>
+          Enter to send · Shift+Enter for new line
+        </p>
       </div>
     </div>
   );
