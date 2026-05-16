@@ -1053,11 +1053,14 @@ ${bubblesHtml}
     <div style={styles.chatContainer}>
       <header style={styles.header}>
         <div style={styles.headerRow}>
-          <div>
-            <h1 style={styles.headerTitle}>🌿 Mental Coach</h1>
-            <p style={styles.headerSubtitle}>Your supportive AI companion</p>
+          <div style={styles.headerTitleWrap}>
+            <span style={styles.headerLeaf}>🌿</span>
+            <div style={styles.headerTitleCol}>
+              <h1 style={styles.headerTitle}>Mental Coach</h1>
+              <p style={styles.headerSubtitle}>Your supportive AI companion</p>
+            </div>
           </div>
-          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          <div className="header-btn-row" style={styles.headerButtonRow}>
             <button
               className="header-btn"
               style={styles.infoButton}
