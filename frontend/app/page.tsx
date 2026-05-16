@@ -1081,11 +1081,11 @@ ${bubblesHtml}
             </button>
             <button
               className="header-btn"
-              style={styles.infoButton}
+              style={{ ...styles.infoButton, textShadow: "0 0 0.6px currentColor" }}
               onClick={() => { setShowInfoPanel((v) => !v); setShowExportMenu(false); setShowToolsPanel(false); setShowSettingsPanel(false); }}
               aria-label="Session info"
             >
-              🛈
+              ⓘ
             </button>
             <button
               className="header-btn"
