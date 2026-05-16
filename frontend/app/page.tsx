@@ -1105,7 +1105,6 @@ ${bubblesHtml}
             </button>
           </div>
         </div>
-      </header>
 
       {showNewSessionConfirm && (
         <div ref={newSessionPanelRef} style={styles.infoPanel}>
@@ -1278,6 +1277,7 @@ ${bubblesHtml}
           </div>
         </div>
       )}
+      </header>
 
       <div style={styles.messageListWrapper}>
         {showScrollBtn && (

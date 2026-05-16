@@ -212,6 +212,7 @@ export const styles: Record<string, CSSProperties> = {
     background: C.bgPage,
   },
   header: {
+    position: "relative" as const,  // anchor for popups so they sit right below the actual header height
     padding: "20px 24px 16px",
     borderBottom: `1px solid ${C.accentDim}`,
     background: C.bgCard,
@@ -281,8 +282,8 @@ export const styles: Record<string, CSSProperties> = {
   // ── Session info panel ────────────────────────────────────────────────────
   infoPanel: {
     position: "absolute",
-    top: "72px",
-    right: "16px",
+    top: "calc(100% - 8px)",   // sits just below the header but overlaps slightly so the panel feels attached
+    right: "40px",             // shifted left so the panel's right edge lands among the icon buttons, not flush to the corner
     width: "260px",
     background: C.bgCard,
     border: `1px solid ${C.accentDim}`,
