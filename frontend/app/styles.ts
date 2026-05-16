@@ -189,6 +189,7 @@ export const styles: Record<string, CSSProperties> = {
     margin: "0 auto",
     width: "100%",
     position: "relative",
+    background: COLORS.bgPage,
   },
   header: {
     padding: "20px 24px 16px",
@@ -205,7 +206,7 @@ export const styles: Record<string, CSSProperties> = {
     borderRadius: "8px",
     border: `1px solid ${COLORS.accentDim}`,
     background: "transparent",
-    color: COLORS.textSecondary,
+    color: COLORS.accent,
     fontSize: "13px",
     cursor: "pointer",
     transition: "all 200ms ease",

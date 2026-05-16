@@ -946,6 +946,7 @@ ${bubblesHtml}
           </div>
           <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
             <button
+              className="header-btn"
               style={styles.infoButton}
               onClick={() => { setShowToolsPanel((v) => !v); setShowInfoPanel(false); setShowExportMenu(false); }}
               aria-label="Available tools"
@@ -954,6 +955,7 @@ ${bubblesHtml}
               ⚒
             </button>
             <button
+              className="header-btn"
               style={styles.infoButton}
               onClick={() => { setShowExportMenu((v) => !v); setShowInfoPanel(false); setShowToolsPanel(false); }}
               aria-label="Export session"
@@ -962,13 +964,14 @@ ${bubblesHtml}
               ⬇
             </button>
             <button
+              className="header-btn"
               style={styles.infoButton}
               onClick={() => { setShowInfoPanel((v) => !v); setShowExportMenu(false); setShowToolsPanel(false); }}
               aria-label="Session info"
             >
               🛈
             </button>
-            <button style={styles.newSessionButton} onClick={clearSession}>
+            <button className="header-btn" style={styles.newSessionButton} onClick={clearSession}>
               New session
             </button>
           </div>
