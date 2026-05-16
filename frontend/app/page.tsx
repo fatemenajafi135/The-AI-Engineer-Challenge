@@ -229,6 +229,14 @@ export default function Home() {
     const pal = PALETTES.find((p) => p.key === paletteKey) ?? PALETTES[0];
     const palAccentAlpha08 = `rgba(${pal.accentRgb}, 0.08)`;
 
+    // Compute session cost for inclusion in all export formats.
+    const totalTokens = messages.reduce((a, m) => a + (m.usage?.total_tokens ?? 0), 0);
+    const totalCost   = messages.reduce((a, m) => a + (m.usage?.cost ?? 0), 0);
+    const costStr     = totalTokens === 0 ? "N/A"
+                      : totalCost   === 0 ? "N/A"
+                      : totalCost < 0.0001 ? `$${totalCost.toFixed(6)}`
+                      : `$${totalCost.toFixed(4)}`;
+
     // ── Breathing technique phase summaries (mirrors BreathingWidget constants) ──
     const BREATHING_NAMES: Record<string, string> = {
       box:                "Box Breathing",
@@ -409,11 +417,12 @@ export default function Home() {
     if (format === "json") {
       content = JSON.stringify({
         session: {
-          user:     userName,
-          coach:    name,
+          user:       userName,
+          coach:      name,
           model,
-          started:  sessionStart ? new Date(sessionStart).toISOString() : null,
-          exported: date.toISOString(),
+          started:    sessionStart ? new Date(sessionStart).toISOString() : null,
+          total_cost: costStr,
+          exported:   date.toISOString(),
         },
         messages: messages.map((m) => {
           const entry: Record<string, unknown> = {
@@ -434,7 +443,8 @@ export default function Home() {
         `# Mental Coach Session`,
         ``,
         `**User:** ${userName}  |  **Coach:** ${name}  |  **Model:** ${model}` +
-          (sessionStart ? `  |  **Started:** ${new Date(sessionStart).toLocaleString()}` : ""),
+          (sessionStart ? `  |  **Started:** ${new Date(sessionStart).toLocaleString()}` : "") +
+          `  |  **Total cost:** ${costStr}`,
         ``,
         `---`,
         ``,
@@ -500,6 +510,7 @@ export default function Home() {
         Coach: <b>${esc(name)}</b> &nbsp;·&nbsp;
         Model: <b>${esc(model)}</b>
         ${sessionStart ? `&nbsp;·&nbsp; Started: <b>${new Date(sessionStart).toLocaleString()}</b>` : ""}
+        &nbsp;·&nbsp; Cost: <b>${costStr}</b>
       </p>
     </div>
     <div>
