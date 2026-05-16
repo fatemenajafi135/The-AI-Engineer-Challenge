@@ -29,6 +29,7 @@ from .config import (
     RETRY_MAX,
 )
 from .history import build_history
+from .logger import log_turn
 from .models import ChatRequest
 from .tools import ALL_TOOLS, TOOLS_SYSTEM_ADDENDUM
 
@@ -167,14 +168,29 @@ async def chat(request: ChatRequest):
             max_tokens=request.max_tokens,
         )
         usage = response.usage
-        result: dict = {"reply": response.choices[0].message.content}
+        reply_text = response.choices[0].message.content
+        result: dict = {"reply": reply_text}
+        usage_dict: dict | None = None
         if usage:
-            result["usage"] = {
-                "prompt_tokens": usage.prompt_tokens,
+            cost = _calc_cost(request.model, usage.prompt_tokens, usage.completion_tokens)
+            usage_dict = {
+                "prompt_tokens":     usage.prompt_tokens,
                 "completion_tokens": usage.completion_tokens,
-                "total_tokens": usage.total_tokens,
-                "cost": _calc_cost(request.model, usage.prompt_tokens, usage.completion_tokens),
+                "total_tokens":      usage.total_tokens,
+                "cost_usd":          cost,
             }
+            result["usage"] = {**usage_dict, "cost": cost}
+
+        log_turn(
+            model=request.model,
+            coach=request.coach,
+            user_name=request.user_name,
+            history_len=len(request.history),
+            user_message=request.message,
+            assistant_reply=reply_text or "",
+            tool_calls=[],
+            usage=usage_dict,
+        )
         return result
     except HTTPException:
         raise
@@ -210,6 +226,9 @@ async def chat_stream(request: ChatRequest):
             "Stream request — model=%s coach=%s msg_len=%d history=%d",
             request.model, request.coach, len(request.message), len(request.history),
         )
+
+        reply_parts: list[str] = []  # accumulate assistant text across both phases
+        logged_tool_calls: list[dict] = []  # {name, args} for each tool fired
 
         # ── Phase 1: call with tools ──────────────────────────────────────────
         stream = await _open_stream(
@@ -250,6 +269,7 @@ async def chat_stream(request: ChatRequest):
 
                     # Direct text token — model chose not to call a tool this turn
                     if delta.content:
+                        reply_parts.append(delta.content)
                         yield f"data: {json.dumps({'token': delta.content})}\n\n"
 
                 if chunk.usage:
@@ -271,7 +291,8 @@ async def chat_stream(request: ChatRequest):
                     logger.warning("Tool arg JSON parse failed for %s — using empty args", tc["name"])
                     args = {}
                 yield f"data: {json.dumps({'tool_call': {'name': tc['name'], 'args': args}})}\n\n"
-                logger.info("Tool called: %s", tc["name"])
+                logger.info("Tool called: %s args=%s", tc["name"], args)
+                logged_tool_calls.append({"name": tc["name"], "args": args})
 
             # Reconstruct the assistant's tool_calls message for the follow-up call
             tool_call_list = [
@@ -315,6 +336,7 @@ async def chat_stream(request: ChatRequest):
                     if chunk.choices:
                         delta = chunk.choices[0].delta
                         if delta.content:
+                            reply_parts.append(delta.content)
                             yield f"data: {json.dumps({'token': delta.content})}\n\n"
                     if chunk.usage:
                         usage_data = chunk.usage  # overwrite with Phase 2 usage
@@ -325,17 +347,32 @@ async def chat_stream(request: ChatRequest):
 
         # ── Final done event ──────────────────────────────────────────────────
         done_payload: dict = {"done": True}
+        usage_dict: dict | None = None
         if usage_data:
+            cost = _calc_cost(request.model, usage_data.prompt_tokens, usage_data.completion_tokens)
             logger.info(
-                "Stream complete — prompt=%d completion=%d total=%d",
-                usage_data.prompt_tokens, usage_data.completion_tokens, usage_data.total_tokens,
+                "Stream complete — prompt=%d completion=%d total=%d cost=%s",
+                usage_data.prompt_tokens, usage_data.completion_tokens, usage_data.total_tokens, cost,
             )
-            done_payload["usage"] = {
-                "prompt_tokens": usage_data.prompt_tokens,
+            usage_dict = {
+                "prompt_tokens":     usage_data.prompt_tokens,
                 "completion_tokens": usage_data.completion_tokens,
-                "total_tokens": usage_data.total_tokens,
-                "cost": _calc_cost(request.model, usage_data.prompt_tokens, usage_data.completion_tokens),
+                "total_tokens":      usage_data.total_tokens,
+                "cost_usd":          cost,
             }
+            done_payload["usage"] = {**usage_dict, "cost": cost}
+
+        log_turn(
+            model=request.model,
+            coach=request.coach,
+            user_name=request.user_name,
+            history_len=len(request.history),
+            user_message=request.message,
+            assistant_reply="".join(reply_parts),
+            tool_calls=logged_tool_calls,
+            usage=usage_dict,
+        )
+
         yield f"data: {json.dumps(done_payload)}\n\n"
 
     return StreamingResponse(

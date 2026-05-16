@@ -20,6 +20,7 @@ from openai import AsyncOpenAI
 from pydantic import BaseModel
 
 from .crisis import get_crisis_resource
+from .logger import log_support_search
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -133,8 +134,16 @@ async def support_search(req: SupportSearchRequest):
         logger.error("Support search failed: %s", e)
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
 
+    crisis = get_crisis_resource(req.country)
     logger.info("Support search returned %d results", len(results))
-    return {
-        "results": results,
-        "crisis":  get_crisis_resource(req.country),
-    }
+    log_support_search(
+        country=req.country,
+        city=req.city,
+        concern_type=req.concern_type,
+        format_preference=req.format_preference,
+        language_preference=req.language_preference,
+        query=query,
+        results=results,
+        crisis=crisis,
+    )
+    return {"results": results, "crisis": crisis}
