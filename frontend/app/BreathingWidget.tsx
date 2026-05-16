@@ -41,12 +41,6 @@ const TECHNIQUE_NAMES: Record<BreathingTool["technique"], string> = {
   "4-7-8":            "4-7-8 Breathing",
 };
 
-const MOOD_OPTIONS = [
-  { emoji: "🌿", label: "Calm" },
-  { emoji: "😌", label: "Better" },
-  { emoji: "😤", label: "Still tense" },
-];
-
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function BreathingWidget({ tool }: { tool: BreathingTool }) {
@@ -55,7 +49,6 @@ export function BreathingWidget({ tool }: { tool: BreathingTool }) {
   const [status, setStatus]       = useState<Status>("idle");
   const [phaseIdx, setPhaseIdx]   = useState(0);
   const [cycleNum, setCycleNum]   = useState(1);
-  const [selectedMood, setSelectedMood] = useState<string | null>(null);
 
   // Advance through phases on a timer; clears itself when paused/done
   useEffect(() => {
@@ -155,22 +148,10 @@ export function BreathingWidget({ tool }: { tool: BreathingTool }) {
       {/* Completion toast */}
       {isDone && (
         <div style={styles.breathingDoneToast}>
-          <p style={styles.breathingDoneTitle}>Well done. How do you feel now?</p>
-          {selectedMood ? (
-            <p style={styles.breathingAck}>Good to know — keep going when you&apos;re ready.</p>
-          ) : (
-            <div style={styles.breathingMoodRow}>
-              {MOOD_OPTIONS.map(({ emoji, label }) => (
-                <button
-                  key={label}
-                  style={styles.breathingMoodBtn}
-                  onClick={() => setSelectedMood(label)}
-                >
-                  {emoji} {label}
-                </button>
-              ))}
-            </div>
-          )}
+          <p style={styles.breathingDoneTitle}>Great work 🌿</p>
+          <p style={styles.breathingAck}>
+            I hope that helped. Take your time — whenever you&apos;re ready, keep going.
+          </p>
         </div>
       )}
 
