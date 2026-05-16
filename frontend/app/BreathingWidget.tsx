@@ -148,9 +148,9 @@ export function BreathingWidget({ tool }: { tool: BreathingTool }) {
       {/* Completion toast */}
       {isDone && (
         <div style={styles.breathingDoneToast}>
-          <p style={styles.breathingDoneTitle}>Great work 🌿</p>
+          <p style={styles.breathingDoneTitle}>Great work 🌱</p>
           <p style={styles.breathingAck}>
-            I hope that helped. Take your time — whenever you&apos;re ready, keep going.
+            I hope that helped. Take your time. Whenever you&apos;re ready, keep going.
           </p>
         </div>
       )}
