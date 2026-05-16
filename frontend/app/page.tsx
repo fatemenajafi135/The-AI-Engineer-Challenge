@@ -814,6 +814,16 @@ ${bubblesHtml}
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   }
 
+  // When the textarea gains focus on mobile, the virtual keyboard opens and the
+  // visual viewport shrinks. We wait for that animation, then scroll the latest
+  // message into view so the user can see what they're replying to. Safety net
+  // for iOS versions older than 15.4 (where interactive-widget isn't honored).
+  function handleTextareaFocus() {
+    setTimeout(() => {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    }, 300);
+  }
+
   if (!mounted) return null;
 
   // ── Landing ─────────────────────────────────────────────────────────────────
@@ -1050,7 +1060,7 @@ ${bubblesHtml}
   );
 
   return (
-    <div style={styles.chatContainer}>
+    <div className="full-height" style={styles.chatContainer}>
       <header style={styles.header}>
         <div style={styles.headerRow}>
           <div style={styles.headerTitleWrap}>
@@ -1386,6 +1396,7 @@ ${bubblesHtml}
             value={input}
             onChange={handleTextareaChange}
             onKeyDown={handleKeyDown}
+            onFocus={handleTextareaFocus}
             placeholder="What's on your mind…"
             rows={1}
             disabled={streaming}

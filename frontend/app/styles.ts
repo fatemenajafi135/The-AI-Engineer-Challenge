@@ -204,7 +204,6 @@ export const styles: Record<string, CSSProperties> = {
   chatContainer: {
     display: "flex",
     flexDirection: "column",
-    height: "100vh",
     maxWidth: "760px",
     margin: "0 auto",
     width: "100%",
