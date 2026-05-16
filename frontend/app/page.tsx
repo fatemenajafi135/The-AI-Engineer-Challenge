@@ -225,6 +225,9 @@ export default function Home() {
     const date    = new Date();
     const dateStr = date.toISOString().split("T")[0];
     const name    = COACH_OPTIONS.find((o) => o.value === coach)?.name ?? "Coach";
+    // Snapshot the active palette so the exported HTML matches what the user sees.
+    const pal = PALETTES.find((p) => p.key === paletteKey) ?? PALETTES[0];
+    const palAccentAlpha08 = `rgba(${pal.accentRgb}, 0.08)`;
 
     // ── Breathing technique phase summaries (mirrors BreathingWidget constants) ──
     const BREATHING_NAMES: Record<string, string> = {
@@ -336,8 +339,8 @@ export default function Home() {
     // ── HTML card serializer ───────────────────────────────────────────────────
     function cardToHtml(m: Message): string {
       const card = (emoji: string, title: string, rows: string) =>
-        `<div style="margin-top:10px;background:${COLORS.bgPage};border:1px solid ${COLORS.accentDim};border-radius:12px;padding:14px 16px;font-size:13px;line-height:1.6;">` +
-        `<div style="font-size:11px;font-weight:700;color:${COLORS.accent};text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">${emoji} ${title}</div>` +
+        `<div style="margin-top:10px;background:${pal.bgPage};border:1px solid ${pal.accentDim};border-radius:12px;padding:14px 16px;font-size:13px;line-height:1.6;">` +
+        `<div style="font-size:11px;font-weight:700;color:${pal.accent};text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">${emoji} ${title}</div>` +
         rows +
         `</div>`;
       const row = (label: string, value: string) =>
@@ -362,7 +365,7 @@ export default function Home() {
         const p      = m.prepTool;
         const pairs  = p.worries.map((w, i) =>
           `<li style="margin-bottom:4px;"><span style="color:${COLORS.textSecondary};">${w}</span>` +
-          ` <span style="color:${COLORS.accent};">→</span> ${p.reframes[i] ?? ""}</li>`
+          ` <span style="color:${pal.accent};">→</span> ${p.reframes[i] ?? ""}</li>`
         ).join("");
         const anchors = p.anchors.map((a) =>
           `<li style="margin-bottom:4px;">${a}</li>`
@@ -377,18 +380,18 @@ export default function Home() {
       if (m.supportTool && m.supportResults) {
         const sr      = m.supportResults;
         const crisis  = sr.crisis
-          ? `<div style="margin-bottom:10px;padding:8px 12px;background:${COLORS.accentOverlay08};border-radius:8px;">` +
-            `<span style="color:${COLORS.accent};font-weight:700;">🆘 Crisis:</span> ${sr.crisis.name}` +
+          ? `<div style="margin-bottom:10px;padding:8px 12px;background:${palAccentAlpha08};border-radius:8px;">` +
+            `<span style="color:${pal.accent};font-weight:700;">🆘 Crisis:</span> ${sr.crisis.name}` +
             (sr.crisis.number ? ` — <strong>${sr.crisis.number}</strong>` : "") +
-            (sr.crisis.url    ? ` — <a href="${sr.crisis.url}" style="color:${COLORS.accent};">${sr.crisis.url}</a>` : "") +
+            (sr.crisis.url    ? ` — <a href="${sr.crisis.url}" style="color:${pal.accent};">${sr.crisis.url}</a>` : "") +
             `</div>`
           : "";
         const results = sr.results.map((r) =>
-          `<div style="margin-bottom:10px;padding:8px 12px;border:1px solid ${COLORS.accentDim};border-radius:8px;">` +
+          `<div style="margin-bottom:10px;padding:8px 12px;border:1px solid ${pal.accentDim};border-radius:8px;">` +
           `<div style="font-weight:700;">${r.name}</div>` +
           `<div style="font-size:12px;color:${COLORS.textSecondary};margin:2px 0;">${r.type} · ${r.format}</div>` +
           `<div style="margin:4px 0;">${r.description}</div>` +
-          `<a href="${r.url}" style="color:${COLORS.accent};font-size:12px;">${r.url}</a>` +
+          `<a href="${r.url}" style="color:${pal.accent};font-size:12px;">${r.url}</a>` +
           `</div>`
         ).join("");
         return card("🔍", `Support — ${sr.query.city}, ${sr.query.country}`,
@@ -458,7 +461,7 @@ export default function Home() {
         const time    = m.timestamp
           ? new Date(m.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
           : "";
-        const bg     = isUser ? COLORS.accent : COLORS.accentDim;
+        const bg     = isUser ? pal.accent : pal.accentDim;
         const radius = isUser ? "18px 18px 4px 18px" : "18px 18px 18px 4px";
         const align  = isUser ? "flex-end" : "flex-start";
         const card   = cardToHtml(m);
@@ -480,12 +483,12 @@ export default function Home() {
   <title>Mental Coach — ${dateStr}</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    body{background:${COLORS.bgPage};color:${COLORS.textPrimary};font-family:system-ui,sans-serif;padding:32px 16px;min-height:100vh}
+    body{background:${pal.bgPage};color:${COLORS.textPrimary};font-family:system-ui,sans-serif;padding:32px 16px;min-height:100vh}
     .wrap{max-width:760px;margin:0 auto}
-    .hdr{background:${COLORS.bgCard};border:1px solid ${COLORS.accentDim};border-radius:12px;padding:20px 24px;margin-bottom:24px}
+    .hdr{background:${pal.bgCard};border:1px solid ${pal.accentDim};border-radius:12px;padding:20px 24px;margin-bottom:24px}
     .hdr h1{font-size:22px;font-weight:700;margin-bottom:8px}
     .meta{font-size:13px;color:${COLORS.textSecondary}}
-    .meta b{color:${COLORS.accent}}
+    .meta b{color:${pal.accent}}
   </style>
 </head>
 <body>
