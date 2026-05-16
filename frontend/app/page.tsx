@@ -42,6 +42,9 @@ export default function Home() {
   const [apiKey, setApiKey] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  type KeyStatus = "idle" | "checking" | "valid" | "invalid";
+  const [apiKeyStatus, setApiKeyStatus] = useState<KeyStatus>("idle");
+  const [apiKeyError,  setApiKeyError]  = useState("");
   const [model, setModel] = useState(DEFAULT_MODEL);
   const [temperature, setTemperature] = useState(DEFAULT_TEMPERATURE);
   const [maxTokens, setMaxTokens] = useState(DEFAULT_MAX_TOKENS);
@@ -486,6 +489,29 @@ ${bubblesHtml}
     setShowScrollBtn(false);
   }
 
+  async function validateApiKey() {
+    const key = apiKey.trim();
+    if (!key) { setApiKeyStatus("idle"); return; }
+    setApiKeyStatus("checking");
+    try {
+      const res  = await fetch("/api/validate-key", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ api_key: key }),
+      });
+      const data = await res.json();
+      if (data.valid) {
+        setApiKeyStatus("valid");
+      } else {
+        setApiKeyStatus("invalid");
+        setApiKeyError(data.error ?? "Invalid key");
+      }
+    } catch {
+      setApiKeyStatus("invalid");
+      setApiKeyError("Could not verify — check your connection");
+    }
+  }
+
   function startChat() {
     const name = userName.trim();
     const key  = apiKey.trim();
@@ -819,10 +845,16 @@ ${bubblesHtml}
                     <div style={styles.apiKeyWrapper}>
                       <input
                         id="api-key-input"
-                        style={styles.apiKeyInput}
+                        style={{
+                          ...styles.apiKeyInput,
+                          borderColor: apiKeyStatus === "valid"   ? COLORS.accent
+                                     : apiKeyStatus === "invalid" ? COLORS.warningBorder
+                                     : undefined,
+                        }}
                         type={showApiKey ? "text" : "password"}
                         value={apiKey}
-                        onChange={(e) => setApiKey(e.target.value)}
+                        onChange={(e) => { setApiKey(e.target.value); setApiKeyStatus("idle"); }}
+                        onBlur={validateApiKey}
                         onKeyDown={(e) => e.key === "Enter" && startChat()}
                         placeholder="sk-..."
                         autoComplete="off"
@@ -840,6 +872,15 @@ ${bubblesHtml}
                     <p style={styles.formHint}>
                       Stored locally in your browser. Sent only to OpenAI, never to anyone else.
                     </p>
+                    {apiKeyStatus === "checking" && (
+                      <p style={{ ...styles.formHint, color: COLORS.textSecondary }}>Verifying…</p>
+                    )}
+                    {apiKeyStatus === "valid" && (
+                      <p style={{ ...styles.formHint, color: COLORS.accent }}>✓ Key accepted</p>
+                    )}
+                    {apiKeyStatus === "invalid" && (
+                      <p style={{ ...styles.formHint, color: COLORS.warningText }}>{apiKeyError}</p>
+                    )}
                   </div>
 
                   {!hasKey && (
