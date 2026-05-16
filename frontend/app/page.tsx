@@ -1265,7 +1265,7 @@ ${bubblesHtml}
       <div style={styles.messageListWrapper}>
         {showScrollBtn && (
           <button style={styles.scrollToBottomBtn} onClick={scrollToBottom} aria-label="Jump to bottom">
-            ↓
+            ▾
           </button>
         )}
         <div ref={listRef} style={styles.messageList}>
