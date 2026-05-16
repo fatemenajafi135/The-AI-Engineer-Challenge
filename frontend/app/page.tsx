@@ -1136,7 +1136,7 @@ ${bubblesHtml}
               "Support Finder (web search)",
             ].map((tool) => (
               <div key={tool} style={styles.infoRow}>
-                <span style={styles.infoLabel}>{tool}</span>
+                <span style={{ ...styles.infoLabel, color: COLORS.textPrimary }}>{tool}</span>
               </div>
             ))}
           </div>
@@ -1167,7 +1167,7 @@ ${bubblesHtml}
                   onChange={() => setPaletteKey(palette.key)}
                   style={{ accentColor: "var(--accent)", cursor: "pointer", flexShrink: 0 }}
                 />
-                <span style={{ fontSize: "13px", color: COLORS.textSecondary, flex: 1 }}>
+                <span style={{ fontSize: "13px", color: COLORS.textPrimary, flex: 1 }}>
                   {palette.name}
                 </span>
                 {/* Four swatches: bgPage, bgCard, accentDim, accent */}
@@ -1209,8 +1209,8 @@ ${bubblesHtml}
                 onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.7"; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
               >
-                <span style={styles.infoLabel}>{label}</span>
-                <span style={styles.infoValue}>{ext}</span>
+                <span style={{ ...styles.infoLabel, color: COLORS.textPrimary }}>{label}</span>
+                <span style={{ ...styles.infoValue, color: COLORS.textSecondary }}>{ext}</span>
               </button>
             ))}
           </div>
