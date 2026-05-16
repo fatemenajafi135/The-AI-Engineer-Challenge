@@ -489,15 +489,17 @@ ${bubblesHtml}
   function startChat() {
     const name = userName.trim();
     const key  = apiKey.trim();
-    if (!name || !key) return;
+    if (!name) return;
 
-    localStorage.setItem(LS_KEYS.userName,     name);
-    localStorage.setItem(LS_KEYS.coach,        coach);
-    localStorage.setItem(LS_KEYS.apiKey,       key);
-    localStorage.setItem(LS_KEYS.model,        model);
-    localStorage.setItem(LS_KEYS.temperature,  String(temperature));
-    localStorage.setItem(LS_KEYS.maxTokens,    String(maxTokens));
+    localStorage.setItem(LS_KEYS.userName, name);
+    localStorage.setItem(LS_KEYS.coach,   coach);
     localStorage.setItem(LS_KEYS.messageLimit, String(messageLimit));
+    if (key) {
+      localStorage.setItem(LS_KEYS.apiKey,      key);
+      localStorage.setItem(LS_KEYS.model,       model);
+      localStorage.setItem(LS_KEYS.temperature, String(temperature));
+      localStorage.setItem(LS_KEYS.maxTokens,   String(maxTokens));
+    }
 
     const now = Date.now();
     localStorage.setItem(LS_KEYS.sessionStart, String(now));
@@ -575,14 +577,11 @@ ${bubblesHtml}
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message:    text,
+          message:   text,
           coach,
           history,
-          user_name:  userName,
-          api_key:    apiKey,
-          model,
-          temperature,
-          max_tokens: maxTokens,
+          user_name: userName,
+          ...(apiKey ? { api_key: apiKey, model, temperature, max_tokens: maxTokens } : {}),
         }),
         signal: controller.signal,
       });
@@ -744,7 +743,8 @@ ${bubblesHtml}
 
   // ── Landing ─────────────────────────────────────────────────────────────────
   if (phase === "landing") {
-    const canStart = userName.trim().length > 0 && apiKey.trim().length > 0;
+    const canStart = userName.trim().length > 0;
+    const hasKey   = apiKey.trim().length > 0;
 
     return (
       <div style={styles.landingContainer}>
@@ -779,37 +779,6 @@ ${bubblesHtml}
               />
             </div>
 
-            {/* API Key — password-style per security rules */}
-            <div>
-              <label style={styles.formLabel} htmlFor="api-key-input">
-                OpenAI API Key
-              </label>
-              <div style={styles.apiKeyWrapper}>
-                <input
-                  id="api-key-input"
-                  style={styles.apiKeyInput}
-                  type={showApiKey ? "text" : "password"}
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && startChat()}
-                  placeholder="sk-..."
-                  autoComplete="off"
-                />
-                <button
-                  style={styles.apiKeyToggle}
-                  type="button"
-                  onClick={() => setShowApiKey((v) => !v)}
-                  tabIndex={-1}
-                  aria-label={showApiKey ? "Hide API key" : "Show API key"}
-                >
-                  {showApiKey ? "Hide" : "Show"}
-                </button>
-              </div>
-              <p style={styles.formHint}>
-                Stored locally in your browser. Sent only to OpenAI, never to anyone else.
-              </p>
-            </div>
-
             {/* Coach selector */}
             <div>
               <p style={styles.selectorLabel}>Choose your coach</p>
@@ -842,13 +811,51 @@ ${bubblesHtml}
               {showAdvanced && (
                 <div style={styles.advancedPanel}>
 
-                  {/* Model */}
+                  {/* API Key — password-style per security rules */}
                   <div style={styles.advancedRow}>
+                    <label style={styles.advancedLabel} htmlFor="api-key-input">
+                      OpenAI API Key
+                    </label>
+                    <div style={styles.apiKeyWrapper}>
+                      <input
+                        id="api-key-input"
+                        style={styles.apiKeyInput}
+                        type={showApiKey ? "text" : "password"}
+                        value={apiKey}
+                        onChange={(e) => setApiKey(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && startChat()}
+                        placeholder="sk-..."
+                        autoComplete="off"
+                      />
+                      <button
+                        style={styles.apiKeyToggle}
+                        type="button"
+                        onClick={() => setShowApiKey((v) => !v)}
+                        tabIndex={-1}
+                        aria-label={showApiKey ? "Hide API key" : "Show API key"}
+                      >
+                        {showApiKey ? "Hide" : "Show"}
+                      </button>
+                    </div>
+                    <p style={styles.formHint}>
+                      Stored locally in your browser. Sent only to OpenAI, never to anyone else.
+                    </p>
+                  </div>
+
+                  {!hasKey && (
+                    <p style={{ fontSize: "12px", color: COLORS.textSecondary, fontStyle: "italic", margin: "0 0 4px 0" }}>
+                      Enter an API key above to customize the options below.
+                    </p>
+                  )}
+
+                  {/* Model */}
+                  <div style={{ ...styles.advancedRow, opacity: hasKey ? 1 : 0.4, pointerEvents: hasKey ? "auto" : "none" }}>
                     <label style={styles.advancedLabel}>Model</label>
                     <select
                       style={styles.advancedSelect}
                       value={model}
                       onChange={(e) => setModel(e.target.value)}
+                      disabled={!hasKey}
                     >
                       {MODEL_OPTIONS.map((m) => (
                         <option key={m.value} value={m.value}>{m.label}</option>
@@ -857,7 +864,7 @@ ${bubblesHtml}
                   </div>
 
                   {/* Temperature */}
-                  <div style={styles.advancedRow}>
+                  <div style={{ ...styles.advancedRow, opacity: hasKey ? 1 : 0.4, pointerEvents: hasKey ? "auto" : "none" }}>
                     <div style={styles.advancedLabelRow}>
                       <span style={styles.advancedLabel}>Temperature</span>
                       <span style={styles.advancedValue}>{temperature.toFixed(1)}</span>
@@ -867,6 +874,7 @@ ${bubblesHtml}
                       style={styles.advancedSlider}
                       min={0} max={2} step={0.1}
                       value={temperature}
+                      disabled={!hasKey}
                       onChange={(e) => setTemperature(parseFloat(e.target.value))}
                     />
                     <div style={styles.sliderHints}>
@@ -876,7 +884,7 @@ ${bubblesHtml}
                   </div>
 
                   {/* Max tokens */}
-                  <div style={styles.advancedRow}>
+                  <div style={{ ...styles.advancedRow, opacity: hasKey ? 1 : 0.4, pointerEvents: hasKey ? "auto" : "none" }}>
                     <div style={styles.advancedLabelRow}>
                       <span style={styles.advancedLabel}>Max response tokens</span>
                       <span style={styles.advancedValue}>{maxTokens}</span>
@@ -886,6 +894,7 @@ ${bubblesHtml}
                       style={styles.advancedSlider}
                       min={256} max={4096} step={128}
                       value={maxTokens}
+                      disabled={!hasKey}
                       onChange={(e) => setMaxTokens(parseInt(e.target.value))}
                     />
                     <div style={styles.sliderHints}>
@@ -895,7 +904,7 @@ ${bubblesHtml}
                   </div>
 
                   {/* Message limit */}
-                  <div style={styles.advancedRow}>
+                  <div style={{ ...styles.advancedRow, opacity: hasKey ? 1 : 0.4, pointerEvents: hasKey ? "auto" : "none" }}>
                     <div style={styles.advancedLabelRow}>
                       <span style={styles.advancedLabel}>Message limit</span>
                       <span style={styles.advancedValue}>{messageLimit}</span>
@@ -905,6 +914,7 @@ ${bubblesHtml}
                       style={styles.advancedSlider}
                       min={5} max={100} step={5}
                       value={messageLimit}
+                      disabled={!hasKey}
                       onChange={(e) => setMessageLimit(parseInt(e.target.value))}
                     />
                     <div style={styles.sliderHints}>

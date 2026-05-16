@@ -8,7 +8,7 @@ import re
 
 # ── Input validation ──────────────────────────────────────────────────────────
 
-MAX_MESSAGE_LENGTH = 500
+MAX_MESSAGE_LENGTH = 400
 
 _INJECTION_PATTERNS = [
     # ── Classic instruction overrides ─────────────────────────────────────────
@@ -52,7 +52,7 @@ COMPILED_INJECTION_PATTERNS = [re.compile(p, re.IGNORECASE) for p in _INJECTION_
 # kept in sync with frontend/config.ts
 
 DEFAULT_MODEL      = "gpt-4o-mini"
-DEFAULT_MAX_TOKENS = 1024
+DEFAULT_MAX_TOKENS = 512
 DEFAULT_COACH      = "challenger"
 
 # ── Retry ─────────────────────────────────────────────────────────────────────
